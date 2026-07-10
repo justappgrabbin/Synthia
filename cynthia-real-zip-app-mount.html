@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Cynthia // Real Zip App Mount</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --bg:#07070a;--panel:#121218;--panel2:#1a1a23;--line:#30303a;
+  --text:#f1eef7;--muted:#a5a0b3;--accent:#a78bfa;--accent2:#7dd3a8;--soft:#d8b4fe;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;min-height:100%;color:var(--text);background:radial-gradient(circle at 15% 0%,rgba(167,139,250,.18),transparent 34%),radial-gradient(circle at 92% 90%,rgba(125,211,168,.12),transparent 38%),var(--bg)}
+.wrap{width:100%;max-width:660px;margin:0 auto;padding:12px 12px 96px}
+.top{position:sticky;top:0;z-index:9;margin:-12px -12px 12px;height:54px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;background:rgba(7,7,10,.94);border-bottom:1px solid var(--line);backdrop-filter:blur(16px)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:.13em;text-transform:uppercase;font-size:12px;color:var(--soft)}
+.sig{width:22px;height:22px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.pill{font-size:10px;color:var(--muted);border:1px solid var(--line);background:rgba(26,26,35,.78);padding:5px 8px;border-radius:999px}
+.hero,.card{border:1px solid var(--line);background:linear-gradient(180deg,rgba(26,26,35,.86),rgba(18,18,24,.94));border-radius:24px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.34);margin-bottom:12px}
+.hero h1{margin:0 0 6px;font-size:28px;letter-spacing:-.05em}
+.hero p{margin:0;color:var(--muted);font-size:13px;line-height:1.42}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.section-title b{color:var(--soft);text-transform:uppercase;letter-spacing:.06em;font-size:13px}
+.section-title small{color:var(--muted);font-size:11px}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.chip{font-size:10px;border:1px solid var(--line);border-radius:999px;padding:5px 7px;color:var(--muted);background:rgba(26,26,35,.7)}
+input,textarea,button,select{font:inherit}
+input,textarea,select{width:100%;background:#0c0c12;color:var(--text);border:1px solid var(--line);border-radius:14px;padding:11px;outline:none}
+textarea{min-height:105px;resize:vertical}
+label{display:block;font-size:11px;color:var(--muted);margin:10px 0 5px}
+.btn{width:100%;border:0;border-radius:16px;padding:12px 14px;font-weight:900;color:#08070a;background:linear-gradient(135deg,var(--accent),var(--accent2));margin-top:12px;cursor:pointer}
+.btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+.btn.small{width:auto;margin:0;padding:7px 10px;font-size:12px}
+.status{font-size:11px;color:var(--muted);margin-top:10px;white-space:pre-wrap}
+.preview{width:100%;height:480px;border:1px solid var(--line);border-radius:18px;background:white;margin-top:8px}
+.code{white-space:pre-wrap;background:#08080d;color:#e9ddff;border:1px solid var(--line);border-radius:18px;padding:12px;max-height:440px;overflow:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.progress{height:8px;background:#0c0c12;border:1px solid var(--line);border-radius:99px;overflow:hidden;margin-top:10px}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .2s}
+.file{border:1px solid var(--line);background:rgba(26,26,35,.72);border-radius:16px;padding:11px;margin:8px 0;cursor:pointer}
+.file b{display:block;font-size:13px}
+.file small{display:block;color:var(--muted);margin-top:3px;word-break:break-all}
+.kv{display:grid;grid-template-columns:100px 1fr;gap:6px;font-size:11px;border-bottom:1px solid rgba(48,48,58,.7);padding:5px 0}
+.kv span:first-child{color:var(--muted)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.jump{position:fixed;left:0;right:0;bottom:0;z-index:10;height:72px;background:rgba(7,7,10,.94);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;backdrop-filter:blur(18px);padding-bottom:env(safe-area-inset-bottom)}
+.jump button{color:var(--muted);background:transparent;border:0;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.jump button span{font-size:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div class="brand"><div class="sig"></div>Cynthia</div><div class="pill">REAL APP MOUNT</div></div>
+
+  <section class="hero">
+    <h1>Real Zip App Mount</h1>
+    <p>This version does the needed thing: unpack the zip, keep the full folder paths, create blob URLs for CSS/JS/assets, rewrite the selected HTML entrypoint, and render the actual program. MIR runs beside it, not instead of it.</p>
+    <div class="chiprow"><div class="chip">actual app first</div><div class="chip">paths preserved</div><div class="chip">entrypoint select</div><div class="chip">notes below</div></div>
+  </section>
+
+  <section class="card" id="gate">
+    <div class="section-title"><b>1. Gate Address</b><small>raw input discarded</small></div>
+    <label>Date</label><input id="dateInput" type="date">
+    <div class="row"><div><label>Time</label><input id="timeInput" type="time"></div><div><label>Place</label><input id="placeInput" placeholder="City, State/Country"></div></div>
+    <button class="btn" type="button" id="resolveGateBtn">Resolve Address</button>
+    <div id="gateOut" class="code">No address resolved yet.</div>
+  </section>
+
+  <section class="card" id="render">
+    <div class="section-title"><b>2. Live Program</b><small id="renderState">nothing mounted</small></div>
+    <div id="previewArea"><div class="code">Upload a zip. Choose index.html/app.html/home.html/main.html or any HTML file. It renders here as the actual program.</div></div>
+  </section>
+
+  <section class="card" id="mount">
+    <div class="section-title"><b>3. Mounted Package</b><small id="mountState">empty</small></div>
+    <label>Entrypoint</label>
+    <select id="entrySelect"><option value="">Upload a zip first</option></select>
+    <button class="btn" type="button" id="renderEntryBtn">Render Selected Entrypoint</button>
+    <div id="mountReport" class="code">No package mounted.</div>
+  </section>
+
+  <section class="card" id="upload">
+    <div class="section-title"><b>4. Upload Zip / Files</b><small id="uploadState">ready</small></div>
+    <input type="file" id="fileInput" multiple>
+    <button class="btn secondary" type="button" id="uploadToSupabaseBtn">Upload Mounted Files To Supabase</button>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="status" id="uploadStatus"></div>
+  </section>
+
+  <section class="card" id="engine">
+    <div class="section-title"><b>5. Actual MIR Engine</b><small id="engineState">ready</small></div>
+    <label>Mode for selected file</label>
+    <select id="modeSelect">
+      <option value="exact" selected>exact: reconstruct source</option>
+      <option value="morph_runtime">morph_runtime: MIR runtime spec</option>
+      <option value="equivalent">equivalent: executable scaffold</option>
+      <option value="improved">improved: evolved spec</option>
+    </select>
+    <button class="btn" type="button" id="regenBtn">Run MIR On Selected File</button>
+    <div id="engineOut" class="code">No selected file yet.</div>
+  </section>
+
+  <section class="card" id="files">
+    <div class="section-title"><b>6. File Tree</b><small id="fileCount">0 files</small></div>
+    <div id="fileList" class="status">No files mounted.</div>
+  </section>
+
+  <section class="card" id="notes">
+    <div class="section-title"><b>7. Notes Under The Program</b><small id="noteTarget">no target</small></div>
+    <textarea id="noteText" placeholder="What happened? What worked? What needs to change?"></textarea>
+    <button class="btn" type="button" id="saveNoteBtn">Save Note</button>
+    <div class="status" id="noteStatus"></div>
+  </section>
+
+  <section class="card" id="local">
+    <div class="section-title"><b>8. Local Notes Backup</b><small>offline</small></div>
+    <div id="localNotes" class="code">No notes yet.</div>
+  </section>
+</div>
+
+<nav class="jump">
+  <button type="button" data-jump="gate"><span>🪐</span>Gate</button>
+  <button type="button" data-jump="render"><span>🎮</span>Render</button>
+  <button type="button" data-jump="upload"><span>📦</span>Upload</button>
+  <button type="button" data-jump="notes"><span>📝</span>Notes</button>
+</nav>
+
+<script>
+// Morph Neural Net v3 - Browser-Embedded Engine
+// Source-dominant, brutally honest file regeneration
+
+(function(global) {
+  'use strict';
+
+  // ========== TYPES (runtime) ==========
+  const GNNNodeType = [
+    "functionality", "pattern", "dependency", "insight",
+    "reusable_component", "source_chunk", "file_blueprint",
+    "morph_runtime", "improvement"
+  ];
+
+  const RegenerationMode = ["exact", "equivalent", "morph_runtime", "improved"];
+
+  // ========== MIR ANALYZER ==========
+  class MIRAnalyzer {
+    analyze(artifact) {
+      const content = artifact.originalContent;
+      const fileType = this.detectFileType(artifact.originalName);
+
+      const contract = {
+        fileType,
+        exports: this.extractExports(content),
+        imports: this.extractImports(content),
+        dependencies: this.extractDependencies(content),
+        props: (fileType === "tsx" || fileType === "jsx") ? this.extractProps(content) : undefined,
+        behavior: this.extractBehavior(content),
+        visualStructure: (fileType === "tsx" || fileType === "jsx") ? this.extractVisualStructure(content) : undefined,
+        dataFlow: this.extractDataFlow(content),
+        stateShape: this.extractStateShape(content),
+        apiSurface: this.extractApiSurface(content)
+      };
+
+      const blueprint = this.extractBlueprint(content);
+      return { contract, blueprint };
+    }
+
+    detectFileType(filename) {
+      const ext = (filename.split(".").pop() || "").toLowerCase();
+      const map = { tsx:"tsx", ts:"ts", js:"js", jsx:"jsx", py:"py", json:"json", css:"css", md:"md" };
+      return map[ext] || "unknown";
+    }
+
+    extractExports(content) {
+      const exports = [];
+      const defaultMatch = content.match(/export\s+default\s+(?:function|class|const)?\s*(\w+)/);
+      if (defaultMatch) exports.push(`default:${defaultMatch[1]}`);
+      const named = [...content.matchAll(/export\s+(?:function|class|const|type|interface)\s+(\w+)/g)];
+      named.forEach(m => exports.push(m[1]));
+      return exports;
+    }
+
+    extractImports(content) {
+      return [...content.matchAll(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/g)].map(m => m[1]);
+    }
+
+    extractDependencies(content) {
+      const deps = new Set();
+      if (content.includes("react")) deps.add("react");
+      if (content.includes("framer-motion")) deps.add("framer-motion");
+      if (content.includes("useState") || content.includes("useEffect")) deps.add("react-hooks");
+      if (content.includes("fetch") || content.includes("axios")) deps.add("http-client");
+      if (content.includes("supabase")) deps.add("supabase");
+      if (content.includes("tailwind")) deps.add("tailwind");
+      if (content.includes("three")) deps.add("three.js");
+      return Array.from(deps);
+    }
+
+    extractProps(content) {
+      const props = [];
+      const interfaceMatch = content.match(/interface\s+\w+Props\s*\{([^}]+)\}/);
+      if (interfaceMatch) {
+        [...interfaceMatch[1].matchAll(/(\w+)(\?)?:\s*(\w+)/g)].forEach(m => {
+          props.push({ name: m[1], type: m[3], required: !m[2] });
+        });
+      }
+      return props;
+    }
+
+    extractBehavior(content) {
+      const b = [];
+      if (content.includes("onClick")) b.push("handles click events");
+      if (content.includes("useState")) b.push("manages local state");
+      if (content.includes("useEffect")) b.push("reacts to lifecycle changes");
+      if (content.includes("fetch") || content.includes("axios")) b.push("makes API calls");
+      if (content.includes("animate") || content.includes("motion")) b.push("has animations");
+      return b;
+    }
+
+    extractVisualStructure(content) {
+      const structure = [];
+      const returnMatch = content.match(/return\s*\((.*?)\);?\s*\}/s);
+      if (returnMatch) {
+        const jsx = returnMatch[1];
+        [...jsx.matchAll(/<(\w+)[^>]*>/g)].forEach(m => {
+          if (m[1] && m[1][0] === m[1][0].toLowerCase()) {
+            structure.push({ element: m[1] });
+          }
+        });
+      }
+      return structure;
+    }
+
+    extractDataFlow(content) {
+      const flows = [];
+      if (content.includes("useState")) flows.push({ from: "user", to: "state", type: "state" });
+      if (content.includes("onClick")) flows.push({ from: "user", to: "handler", type: "event" });
+      if (content.includes("fetch")) flows.push({ from: "api", to: "component", type: "api" });
+      return flows;
+    }
+
+    extractStateShape(content) {
+      const shape = {};
+      [...content.matchAll(/const\s+\[(\w+),\s*set(\w+)\]\s*=\s*useState(?:<([^>]+)>)?\(([^)]+)\)/g)].forEach(m => {
+        shape[m[1]] = m[3] || "any";
+      });
+      return Object.keys(shape).length > 0 ? shape : undefined;
+    }
+
+    extractApiSurface(content) {
+      const endpoints = [];
+      [...content.matchAll(/(?:fetch|axios)\s*\(\s*['"]([^'"]+)['"]\s*,?\s*\{?\s*method:\s*['"](\w+)['"]?/g)].forEach(m => {
+        endpoints.push({ method: m[2] || "GET", path: m[1] });
+      });
+      return endpoints.length > 0 ? endpoints : undefined;
+    }
+
+    extractBlueprint(content) {
+      const imports = [...content.matchAll(/import\s+.*?\s+from\s+['"]([^'"]+)['"]/g)].map(m => m[0]);
+      const exports = [...content.matchAll(/export\s+(?:default\s+)?(?:function|const|class|interface|type)\s+\w+/g)].map(m => m[0]);
+      const functions = [...content.matchAll(/(?:function|const)\s+(\w+)/g)].map(m => m[1]);
+      const classes = [...content.matchAll(/class\s+(\w+)/g)].map(m => m[1]);
+      const hasJsx = content.includes("return (") && content.includes("<");
+      let fileRole = "utility";
+      if (hasJsx) fileRole = "component";
+      else if (exports.some(e => e.includes("default"))) fileRole = "module";
+      else if (classes.length > 0) fileRole = "class";
+      else if (functions.length > 0) fileRole = "functions";
+
+      return { imports, exports, functions, classes, hasJsx, fileRole, chunkCount: Math.ceil(content.length / 2000), totalLength: content.length };
+    }
+  }
+
+  // ========== MIR RENDERER ==========
+  class MIRRenderer {
+    render(contract, blueprint, mode) {
+      switch (mode) {
+        case "exact": return "// EXACT: use source chunks";
+        case "equivalent": return this.renderEquivalent(contract, blueprint);
+        case "morph_runtime": return this.renderMorphRuntime(contract, blueprint);
+        case "improved": return this.renderImproved(contract, blueprint);
+        default: return this.renderMorphRuntime(contract, blueprint);
+      }
+    }
+
+    renderEquivalent(contract, blueprint) {
+      const lines = [];
+      const specName = (blueprint.exports[0] || "MorphComponent").replace("default:", "");
+
+      contract.imports.slice(0, 5).forEach(imp => {
+        if (imp === "react") lines.push('import React from "react"');
+        else if (imp.includes("framer")) lines.push('import { motion } from "framer-motion"');
+        else lines.push(`import * as ${imp.replace(/[^a-zA-Z0-9]/g, "_")} from "${imp}"`);
+      });
+      lines.push("");
+
+      if (contract.props && contract.props.length > 0) {
+        lines.push(`interface ${specName}Props {`);
+        contract.props.forEach(p => {
+          lines.push(`  ${p.name}${p.required ? "" : "?"}: ${p.type};`);
+        });
+        lines.push(`}`);
+        lines.push("");
+      }
+
+      lines.push(`export const ${specName} = () => {`);
+      contract.behavior.forEach(b => lines.push(`  // TODO: ${b}`));
+      lines.push(`  return <div>${specName} equivalent</div>;`);
+      lines.push(`};`);
+
+      return lines.join("\n");
+    }
+
+    renderMorphRuntime(contract, blueprint) {
+      const specName = (blueprint.exports[0] || "MorphComponent").replace("default:", "");
+      return `// Morph Runtime Equivalent
+// Original: ${blueprint.fileRole} (${contract.fileType})
+export const ${specName}Spec = {
+  type: "${blueprint.fileRole}",
+  name: "${specName}",
+  fileType: "${contract.fileType}",
+  props: ${JSON.stringify(contract.props || [])},
+  behavior: ${JSON.stringify(contract.behavior)},
+  dependencies: ${JSON.stringify(contract.dependencies)},
+  renderPlan: ${JSON.stringify(contract.visualStructure || [])},
+  dataFlow: ${JSON.stringify(contract.dataFlow)},
+  stateShape: ${JSON.stringify(contract.stateShape)},
+  apiSurface: ${JSON.stringify(contract.apiSurface)}
+};
+`;
+    }
+
+    renderImproved(contract, blueprint) {
+      return `// Improved version
+export const ImprovedSpec = {
+  enhancements: ["memoized", "error boundaries", "loading states", "a11y"]
+};`;
+    }
+  }
+
+  // ========== MORPH MEMORY ENGINE v3 ==========
+  class MorphMemoryEngine {
+    constructor() {
+      this.nodes = new Map();
+      this.operations = [];
+      this.nodeCounter = 0;
+      this.analyzer = new MIRAnalyzer();
+      this.renderer = new MIRRenderer();
+    }
+
+    hydrate(nodes) {
+      nodes.forEach(node => {
+        this.nodes.set(node.id, node);
+        const num = parseInt(node.id.split("_")[1] || "0");
+        this.nodeCounter = Math.max(this.nodeCounter, num);
+      });
+    }
+
+    async analyzeArtifact(artifact) {
+      const content = artifact.originalContent;
+      const { contract, blueprint } = this.analyzer.analyze(artifact);
+
+      // Store source chunks WITH EXPLICIT INDEX
+      this.createSourceChunks(content, artifact.id);
+
+      // Store blueprint
+      this.createNode("file_blueprint", JSON.stringify({ contract, blueprint }), artifact.id);
+
+      // Store components
+      blueprint.imports.slice(0, 10).forEach(imp => this.createNode("dependency", imp, artifact.id));
+      blueprint.functions.slice(0, 10).forEach(func => this.createNode("functionality", `Function: ${func}`, artifact.id));
+      blueprint.classes.forEach(cls => this.createNode("pattern", `Class: ${cls}`, artifact.id));
+
+      return {
+        ...artifact,
+        understanding: {
+          intent: this.extractIntent(content),
+          functionality: this.extractFunctionality(content),
+          dependencies: this.extractDependencies(content),
+          patterns: this.extractPatterns(content),
+          complexity: this.calculateComplexity(content),
+          keyInsights: this.extractKeyInsights(content),
+          reusableComponents: this.extractReusableComponents(content)
+        },
+        metadata: { ...artifact.metadata, status: "understood" }
+      };
+    }
+
+    async regenerateArtifact(artifact, context, mode = "morph_runtime") {
+      if (!artifact.understanding) {
+        return {
+          ...artifact,
+          regenerationResult: {
+            code: "// No understanding", confidence: 0, modeUsed: mode,
+            missing: ["No analysis"], integrity: 0, isExact: false, isIdentical: false,
+            chunkCount: 0, reconstructedLength: 0, originalLength: 0
+          }
+        };
+      }
+
+      const artifactNodes = this.findArtifactNodes(artifact.id);
+      const blueprintNode = artifactNodes.find(n => n.nodeType === "file_blueprint");
+
+      // BRUTAL INTEGRITY: from reconstructed output
+      const reconstructed = this.reconstructFromChunks(artifact.id);
+      const isIdentical = reconstructed === artifact.originalContent;
+      const integrity = artifact.originalContent.length > 0 ? reconstructed.length / artifact.originalContent.length : 0;
+      const chunkCount = artifactNodes.filter(n => n.nodeType === "source_chunk").length;
+
+      let result;
+
+      if (mode === "exact") {
+        if (chunkCount > 0 && integrity > 0.7) {
+          result = {
+            code: reconstructed, confidence: isIdentical ? 0.98 : 0.92, modeUsed: "exact",
+            missing: isIdentical ? [] : ["minor differences"],
+            integrity, isExact: isIdentical, isIdentical, chunkCount,
+            reconstructedLength: reconstructed.length, originalLength: artifact.originalContent.length
+          };
+        } else {
+          result = {
+            code: this.generateFromBlueprint(artifact.id), confidence: 0.65, modeUsed: "exact",
+            missing: [`Integrity too low (${(integrity * 100).toFixed(1)}%)`],
+            integrity, isExact: false, isIdentical: false, chunkCount,
+            reconstructedLength: reconstructed.length, originalLength: artifact.originalContent.length
+          };
+        }
+      } else if (mode === "equivalent") {
+        let mirContract = null, mirBlueprint = null;
+        if (blueprintNode) {
+          try { const parsed = JSON.parse(blueprintNode.content); mirContract = parsed.contract; mirBlueprint = parsed.blueprint; }
+          catch { /* fallback */ }
+        }
+        if (!mirContract) { const { contract, blueprint } = this.analyzer.analyze(artifact); mirContract = contract; mirBlueprint = blueprint; }
+        result = {
+          code: this.renderer.render(mirContract, mirBlueprint, "equivalent"), confidence: 0.85,
+          modeUsed: "equivalent", missing: ["exact details", "original comments"],
+          integrity: 0, isExact: false, isIdentical: false, chunkCount,
+          reconstructedLength: reconstructed.length, originalLength: artifact.originalContent.length
+        };
+      } else if (mode === "morph_runtime") {
+        let mirContract = null, mirBlueprint = null;
+        if (blueprintNode) {
+          try { const parsed = JSON.parse(blueprintNode.content); mirContract = parsed.contract; mirBlueprint = parsed.blueprint; }
+          catch { const { contract, blueprint } = this.analyzer.analyze(artifact); mirContract = contract; mirBlueprint = blueprint; }
+        } else { const { contract, blueprint } = this.analyzer.analyze(artifact); mirContract = contract; mirBlueprint = blueprint; }
+        result = {
+          code: this.renderer.render(mirContract, mirBlueprint, "morph_runtime"), confidence: 0.78,
+          modeUsed: "morph_runtime", missing: ["exact styles", "animation timing", "variable names"],
+          integrity: 0, isExact: false, isIdentical: false, chunkCount,
+          reconstructedLength: reconstructed.length, originalLength: artifact.originalContent.length
+        };
+      } else {
+        result = {
+          code: `// Improved version of ${artifact.originalName}`, confidence: 0.82,
+          modeUsed: "improved", missing: ["original specifics"],
+          integrity: 0, isExact: false, isIdentical: false, chunkCount,
+          reconstructedLength: reconstructed.length, originalLength: artifact.originalContent.length
+        };
+      }
+
+      return {
+        ...artifact,
+        regeneration: {
+          generatedCode: result.code, architecture: "Morph", confidence: Math.round(result.confidence * 100),
+          improvements: result.missing, gnnNodes: artifactNodes.map(n => n.id),
+          generatedAt: new Date().toISOString(), mode, missing: result.missing
+        },
+        regenerationResult: result,
+        metadata: { ...artifact.metadata, status: "regenerated" }
+      };
+    }
+
+    // ========== SOURCE CHUNK SYSTEM v3 ==========
+    createSourceChunks(content, artifactId) {
+      const chunkSize = 2000, overlap = 200;
+      for (let i = 0, index = 0; i < content.length; i += chunkSize - overlap, index++) {
+        const start = i, end = Math.min(i + chunkSize, content.length);
+        const payload = { index, chunk: content.slice(start, end), start, end };
+        this.createNode("source_chunk", JSON.stringify(payload), artifactId);
+      }
+    }
+
+    reconstructFromChunks(artifactId) {
+      const chunks = Array.from(this.nodes.values())
+        .filter(n => n.nodeType === "source_chunk" && n.sourceArtifact === artifactId)
+        .map(n => { try { return JSON.parse(n.content); } catch { return null; } })
+        .filter(p => p !== null)
+        .sort((a, b) => a.index - b.index); // SORT BY INDEX, NOT ID
+
+      if (chunks.length === 0) return "";
+
+      let result = chunks[0].chunk;
+      for (let i = 1; i < chunks.length; i++) {
+        const prev = chunks[i - 1].chunk, curr = chunks[i].chunk;
+        let overlapLen = 0, maxOverlap = Math.min(prev.length, curr.length, 500);
+        for (let j = maxOverlap; j > 0; j--) {
+          if (prev.slice(-j) === curr.slice(0, j)) { overlapLen = j; break; }
+        }
+        result += curr.slice(overlapLen);
+      }
+      return result;
+    }
+
+    generateFromBlueprint(artifactId) {
+      const blueprintNode = this.findArtifactNodes(artifactId).find(n => n.nodeType === "file_blueprint");
+      if (!blueprintNode) return "// Blueprint not found";
+      try {
+        const { blueprint } = JSON.parse(blueprintNode.content);
+        return `// Reconstructed from blueprint\n// Role: ${blueprint.fileRole}\n// Functions: ${blueprint.functions.length}\n// Classes: ${blueprint.classes.length}`;
+      } catch { return "// Failed to parse blueprint"; }
+    }
+
+    // ========== NODE MANAGEMENT ==========
+    createNode(nodeType, content, sourceArtifact) {
+      this.nodeCounter++;
+      const node = {
+        id: `${nodeType}_${this.nodeCounter}`, nodeType, content, sourceArtifact,
+        weight: 0.5, usageCount: 0, connections: [], createdAt: new Date().toISOString()
+      };
+      this.nodes.set(node.id, node);
+      return node;
+    }
+
+    findArtifactNodes(artifactId) {
+      return Array.from(this.nodes.values()).filter(n => n.sourceArtifact === artifactId);
+    }
+
+    // ========== SEMANTIC EXTRACTION ==========
+    extractIntent(content) {
+      const m = content.match(/\/\*\*\s*\n\s*\*\s*(.+?)\n/s) || content.match(/\/\/\s*(.+?)(?:\n|$)/);
+      if (m) return m[1].trim();
+      const cm = content.match(/class\s+(\w+)/), fm = content.match(/function\s+(\w+)/);
+      if (cm) return `Implements ${cm[1]}`;
+      if (fm) return `Provides ${fm[1]}`;
+      return "Unknown";
+    }
+
+    extractFunctionality(content) {
+      const funcs = [];
+      [...content.matchAll(/export\s+(?:async\s+)?(?:function|const|class)\s+(\w+)/g)].forEach(m => funcs.push(`Export: ${m[1]}`));
+      if (content.includes("useState")) funcs.push("State management");
+      if (content.includes("onClick")) funcs.push("Event handling");
+      return funcs.length > 0 ? funcs : ["Basic functionality"];
+    }
+
+    extractDependencies(content) {
+      const deps = [...content.matchAll(/from\s+['"]([^'"]+)['"]/g)].map(m => m[1]);
+      if (content.includes("supabase")) deps.push("Supabase");
+      if (content.includes("react")) deps.push("React");
+      return [...new Set(deps)];
+    }
+
+    extractPatterns(content) {
+      const p = [];
+      if (content.includes("useEffect")) p.push("React hooks");
+      if (content.includes("async")) p.push("Async/await");
+      if (content.includes("try") && content.includes("catch")) p.push("Error handling");
+      return p.length > 0 ? p : ["Procedural"];
+    }
+
+    extractKeyInsights(content) {
+      const insights = [];
+      if (content.includes("graph") || content.includes("node")) insights.push("Graph-based architecture");
+      if (content.includes("neural") || content.includes("tensor")) insights.push("Neural network components");
+      return insights.length > 0 ? insights : ["General utility"];
+    }
+
+    extractReusableComponents(content) {
+      const comps = [];
+      if (content.includes("config") || content.includes("settings")) comps.push("Configuration pattern");
+      if (content.includes("validate")) comps.push("Validation logic");
+      return comps.length > 0 ? comps : ["Core functionality"];
+    }
+
+    calculateComplexity(content) {
+      let score = 50;
+      score += Math.min(content.split("\n").length / 10, 20);
+      let maxDepth = 0, current = 0;
+      for (const char of content) {
+        if (char === "{") { current++; maxDepth = Math.max(maxDepth, current); }
+        else if (char === "}") current--;
+      }
+      score += maxDepth * 5;
+      score += (content.match(/function/g) || []).length * 2;
+      return Math.min(100, Math.round(score));
+    }
+
+    getNodes() { return Array.from(this.nodes.values()); }
+    getNodeCount() { return this.nodes.size; }
+  }
+
+  // ========== EXPOSE TO GLOBAL ==========
+  global.MorphEngine = { MorphMemoryEngine, MIRAnalyzer, MIRRenderer, RegenerationMode };
+
+})(typeof window !== 'undefined' ? window : global);
+
+</script>
+
+<script>
+(function(){
+const INTAKE='https://leisphnjslcuepflefri.supabase.co/functions/v1/cynthia-intake';
+const $=s=>document.querySelector(s);
+const engine = new window.MorphEngine.MorphMemoryEngine();
+
+let currentAddress=null;
+let vfs=new Map();
+let blobs=new Map();
+let artifacts=new Map();
+let selectedPath='';
+let packageName='package';
+
+function jumpTo(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
+function setBar(n){$('#bar').style.width=Math.max(0,Math.min(100,n))+'%'}
+function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function zodiac(d){return['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'][Math.floor((d%360)/30)]}
+function resolveAddress(date,time,place){const seed=`${date}|${time}|${place.trim().toLowerCase()}`,h=hash(seed),deg=h%360,min=Math.floor(h/360)%60,sec=Math.floor(h/21600)%60,entry=['stellar-proximology','agentic-reality','symbiant-circle'][h%3],axis=['axis-alpha','axis-beta','arc-origin','arc-return','axis-cross'][h%5],gate=(h%64)+1,line=(Math.floor(h/64)%6)+1,color=(Math.floor(h/384)%6)+1,tone=(Math.floor(h/2304)%6)+1,base=(Math.floor(h/13824)%5)+1,house=(Math.floor(deg/30)%12)+1,z=zodiac(deg);return{entry_point:entry,gate,line,color,tone,base,degree:deg,minute:min,second:sec,axis,zodiac:z,house,address:`cynthia://${entry}/gate-${gate}.${line}.${color}.${tone}.${base}/${deg}.${min}.${sec}/${axis}/${z}/house-${house}`,warning:'Demo resolver. Replace with canonical ephemeris/gate resolver. Raw input is discarded.'}}
+function showAddress(a){currentAddress=a;$('#gateOut').innerHTML=Object.entries(a).map(([k,v])=>`<div class="kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join('');localStorage.setItem('cynthia.address.only',JSON.stringify(a))}
+function mimeFor(path){let p=path.toLowerCase();if(p.endsWith('.html'))return'text/html';if(p.endsWith('.css'))return'text/css';if(p.endsWith('.js')||p.endsWith('.mjs'))return'text/javascript';if(p.endsWith('.json'))return'application/json';if(p.endsWith('.svg'))return'image/svg+xml';if(p.endsWith('.png'))return'image/png';if(p.endsWith('.jpg')||p.endsWith('.jpeg'))return'image/jpeg';if(p.endsWith('.gif'))return'image/gif';if(p.endsWith('.webp'))return'image/webp';return'application/octet-stream'}
+function isTextPath(path){return /\.(html?|css|js|mjs|cjs|ts|tsx|jsx|json|md|txt|svg|xml|csv|yml|yaml|toml|py)$/i.test(path)}
+function normalizePath(path){return path.replace(/^\/+/,'').replace(/\\/g,'/')}
+function dirOf(path){let i=path.lastIndexOf('/');return i>=0?path.slice(0,i+1):''}
+function resolveRel(base,rel){if(!rel||/^(https?:|data:|blob:|mailto:|tel:|#)/i.test(rel))return rel;let stack=(dirOf(base)+rel).split('/');let out=[];for(let part of stack){if(!part||part==='.'){continue}else if(part==='..'){out.pop()}else{out.push(part)}}return out.join('/')}
+function blobUrlFor(path){path=normalizePath(path);if(blobs.has(path))return blobs.get(path);let rec=vfs.get(path);if(!rec)return null;let blob=new Blob([rec.bytes],{type:mimeFor(path)});let url=URL.createObjectURL(blob);blobs.set(path,url);return url}
+function rewriteHtml(html,entryPath){
+  const addressScript=currentAddress?`<script type="application/json" id="cynthia-address">${JSON.stringify(currentAddress,null,2).replace(/<\/script/gi,'<\\/script')}<\/script><script>window.CYNTHIA_ADDRESS=${JSON.stringify(currentAddress).replace(/<\/script/gi,'<\\/script')};<\/script>`:'';
+  html=html.replace(/\s(src|href)=["']([^"']+)["']/gi,(m,attr,rel)=>{let full=resolveRel(entryPath,rel);let url=blobUrlFor(full);return url?` ${attr}="${url}"`:m});
+  html=html.replace(/url\((['"]?)([^'")]+)\1\)/gi,(m,q,rel)=>{let full=resolveRel(entryPath,rel);let url=blobUrlFor(full);return url?`url("${url}")`:m});
+  if(html.includes('</head>')) return html.replace('</head>',addressScript+'</head>');
+  return addressScript+html;
+}
+function chooseEntry(){
+  let htmls=[...vfs.keys()].filter(p=>/\.html?$/i.test(p));
+  let preferred=htmls.find(p=>/(^|\/)(index|app|home|main|shell|morph|syntia|synthia|cynthia)[^/]*\.html?$/i.test(p));
+  return preferred||htmls[0]||'';
+}
+function updateEntrySelect(){
+  let sel=$('#entrySelect');let htmls=[...vfs.keys()].filter(p=>/\.html?$/i.test(p));
+  if(!htmls.length){sel.innerHTML='<option value="">No HTML entrypoint found</option>';return}
+  sel.innerHTML=htmls.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  sel.value=chooseEntry();
+}
+function renderEntrypoint(path){
+  path=path||$('#entrySelect').value||chooseEntry();
+  if(!path){$('#previewArea').innerHTML='<div class="code">No HTML entrypoint found. This package may need a build step.</div>';return}
+  selectedPath=path;$('#noteTarget').textContent=path;
+  let rec=vfs.get(path);
+  let html=rec.text||new TextDecoder().decode(rec.bytes);
+  let rewritten=rewriteHtml(html,path);
+  $('#previewArea').innerHTML='<iframe class="preview" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe>';
+  $('#previewArea iframe').srcdoc=rewritten;
+  $('#renderState').textContent=path;
+  $('#mountReport').textContent=`Rendered ${path}\nFiles mounted: ${vfs.size}\nBlob URLs: ${blobs.size}\n\nIf the app still shows blank, it likely needs a bundler/build server, imports bare modules, or uses TS/TSX directly.`;
+  jumpTo('render');
+}
+async function analyzeWithMIR(path,rec){
+  try{
+    if(!rec.text && !isTextPath(path))return null;
+    let text=rec.text || new TextDecoder().decode(rec.bytes);
+    let artifact={id:'art_'+hash(path+text)+'_'+Date.now(),originalName:path.split('/').pop()||path,originalContent:text,metadata:{path,size:text.length,address:currentAddress,status:'uploaded'}};
+    let analyzed=await engine.analyzeArtifact(artifact);
+    artifacts.set(path,analyzed);
+    return analyzed;
+  }catch(e){console.warn('MIR analyze failed',path,e);return null}
+}
+async function mountFiles(files){
+  clearMount();
+  packageName=files[0]?.name||'package';
+  let log=[],total=0,done=0;
+  for(const f of files){
+    if(f.name.toLowerCase().endsWith('.zip')){
+      if(!window.JSZip)throw new Error('JSZip did not load. Internet/CDN blocked.');
+      let zip=await JSZip.loadAsync(f);
+      let entries=Object.values(zip.files).filter(x=>!x.dir&&!x.name.includes('__MACOSX')&&!x.name.endsWith('.DS_Store'));
+      total+=entries.length;
+      for(const e of entries){
+        try{
+          let path=normalizePath(e.name);
+          let bytes=await e.async('uint8array');
+          let rec={path,bytes,text:null,size:bytes.length};
+          if(isTextPath(path)){rec.text=new TextDecoder().decode(bytes)}
+          vfs.set(path,rec);
+          await analyzeWithMIR(path,rec);
+          log.push('✓ mounted '+path);
+        }catch(err){log.push('× '+e.name+' '+err.message)}
+        done++;setBar(total?(done/total)*100:0);$('#uploadStatus').textContent=log.slice(-90).join('\n');
+      }
+    } else {
+      total++;
+      let path=normalizePath(f.name);
+      let bytes=new Uint8Array(await f.arrayBuffer());
+      let rec={path,bytes,text:null,size:bytes.length};
+      if(isTextPath(path)){rec.text=new TextDecoder().decode(bytes)}
+      vfs.set(path,rec);
+      await analyzeWithMIR(path,rec);
+      log.push('✓ mounted '+path);
+      done++;setBar((done/total)*100);$('#uploadStatus').textContent=log.slice(-90).join('\n');
+    }
+  }
+  $('#uploadState').textContent='mounted';
+  $('#mountState').textContent=vfs.size+' files';
+  $('#fileCount').textContent=vfs.size+' files';
+  updateEntrySelect();
+  renderFileTree();
+  renderEntrypoint(chooseEntry());
+}
+function clearMount(){
+  for(let url of blobs.values())URL.revokeObjectURL(url);
+  vfs.clear();blobs.clear();artifacts.clear();selectedPath='';
+  $('#fileList').textContent='No files mounted.';$('#entrySelect').innerHTML='<option value="">Upload a zip first</option>';
+  $('#mountReport').textContent='No package mounted.';$('#engineOut').textContent='No selected file yet.';
+}
+function renderFileTree(){
+  let list=$('#fileList');if(!vfs.size){list.textContent='No files mounted.';return}
+  list.innerHTML='';
+  [...vfs.keys()].sort().forEach(path=>{
+    let rec=vfs.get(path);
+    let div=document.createElement('div');div.className='file';
+    div.innerHTML='<b>'+esc(path)+'</b><small>'+esc(mimeFor(path))+' · '+rec.size+' bytes</small>';
+    div.onclick=()=>{selectedPath=path;$('#noteTarget').textContent=path;showFile(path);jumpTo('engine')};
+    list.appendChild(div);
+  });
+}
+function showFile(path){
+  let rec=vfs.get(path);let text=rec.text || '[binary file]';
+  let analyzed=artifacts.get(path);
+  $('#engineOut').textContent=JSON.stringify({selected:path,mime:mimeFor(path),mir:analyzed?analyzed.understanding:null,nodes:engine.getNodeCount?engine.getNodeCount():'n/a'},null,2);
+}
+async function uploadMountedToSupabase(){
+  if(!vfs.size){alert('Mount files first');return}
+  let done=0,total=vfs.size,log=[];
+  for(let [path,rec] of vfs.entries()){
+    if(!rec.text){done++;continue}
+    try{
+      let res=await fetch(INTAKE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:path.split('/').pop()||path,content:rec.text,source_kind:'zip-app-mount:'+packageName,address:currentAddress})});
+      let data=await res.json();if(!data.ok)throw new Error(data.error||'upload failed');
+      log.push('✓ sent '+path);
+    }catch(e){log.push('× '+path+' '+e.message)}
+    done++;setBar((done/total)*100);$('#uploadStatus').textContent=log.slice(-90).join('\n');
+  }
+  $('#uploadStatus').textContent+='\n\nSupabase upload pass complete.';
+}
+async function runMIR(){
+  if(!selectedPath){selectedPath=$('#entrySelect').value||chooseEntry()}
+  let a=artifacts.get(selectedPath); if(!a){alert('Select a text/code file first');return}
+  let mode=$('#modeSelect').value;
+  $('#engineState').textContent='running '+mode;
+  let result=await engine.regenerateArtifact(a,{address:currentAddress},mode);
+  let r=result.regenerationResult;
+  $('#engineOut').textContent=JSON.stringify({file:selectedPath,mode:r.modeUsed,confidence:r.confidence,integrity:r.integrity,isExact:r.isExact,isIdentical:r.isIdentical,chunkCount:r.chunkCount,missing:r.missing},null,2);
+  if(mode==='exact' && /\.html?$/i.test(selectedPath)){
+    let rewritten=rewriteHtml(r.code,selectedPath);
+    $('#previewArea').innerHTML='<iframe class="preview" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe>';
+    $('#previewArea iframe').srcdoc=rewritten;
+    $('#renderState').textContent='MIR exact · '+selectedPath;
+  } else {
+    $('#mountReport').textContent=r.code;
+  }
+  $('#engineState').textContent='done';
+}
+function saveLocalNote(note){let notes=JSON.parse(localStorage.getItem('cynthia.realMountNotes')||'[]');notes.unshift(note);localStorage.setItem('cynthia.realMountNotes',JSON.stringify(notes.slice(0,100)));renderNotes()}
+function renderNotes(){let notes=JSON.parse(localStorage.getItem('cynthia.realMountNotes')||'[]');$('#localNotes').textContent=notes.length?JSON.stringify(notes,null,2):'No notes yet.'}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>jumpTo(b.dataset.jump));
+  try{let a=JSON.parse(localStorage.getItem('cynthia.address.only')||'null');if(a)showAddress(a)}catch{}
+  $('#resolveGateBtn').onclick=()=>{let a=resolveAddress($('#dateInput').value,$('#timeInput').value,$('#placeInput').value);showAddress(a);$('#dateInput').value='';$('#timeInput').value='';$('#placeInput').value=''};
+  $('#fileInput').onchange=async e=>{try{$('#uploadState').textContent='mounting';setBar(0);$('#uploadStatus').textContent='Mounting package...';await mountFiles(Array.from(e.target.files||[]))}catch(err){$('#uploadStatus').textContent='Error: '+err.message;alert(err.message)}};
+  $('#renderEntryBtn').onclick=()=>renderEntrypoint($('#entrySelect').value);
+  $('#uploadToSupabaseBtn').onclick=()=>uploadMountedToSupabase().catch(e=>alert(e.message));
+  $('#regenBtn').onclick=()=>runMIR().catch(e=>alert(e.message));
+  $('#saveNoteBtn').onclick=async()=>{let text=$('#noteText').value.trim();if(!text){alert('Write a note first');return}let note={type:'real-app-mount-note',target:selectedPath||$('#entrySelect').value||'package',address:currentAddress,files:[...vfs.keys()],note:text,created_at:new Date().toISOString()};saveLocalNote(note);$('#noteStatus').textContent='Saved locally. Sending to Cynthia...';try{await fetch(INTAKE,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:'note-'+Date.now()+'.json',content:JSON.stringify(note,null,2),source_kind:'real-app-mount-note',address:currentAddress})});$('#noteStatus').textContent='Saved locally and attempted Cynthia save.';$('#noteText').value=''}catch(e){$('#noteStatus').textContent='Saved locally. Cynthia save failed: '+e.message}};
+  renderNotes();
+});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Cynthia Core v1.0 — Single-File Drop (Fixed)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --ink:#0f1223; --bg:#0b0e16; --card:#121628; --soft:#99a2ff; --accent:#6ae1ff; --ok:#70f0b6; --warn:#ffd36a; --err:#ff7a7a;}
+  html,body{margin:0;padding:0;background:var(--bg);color:#e7ecff;font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1080px;margin:24px auto;padding:12px}
+  h1{font-size:22px;margin:0 0 12px}
+  .top{position:sticky;top:0;background:linear-gradient(180deg, rgba(11,14,22,.98), rgba(11,14,22,.8));backdrop-filter: blur(6px);z-index:10;border-bottom:1px solid #1a2040}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+  .card{background:var(--card);border:1px solid #1e2446;border-radius:14px;padding:12px}
+  .file{white-space:pre;overflow:auto;background:#0a0e18;border:1px solid #202642;border-radius:10px;padding:10px;max-height:320px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  button{background:#182046;border:1px solid #26306b;color:#e7ecff;padding:8px 12px;border-radius:10px;cursor:pointer}
+  button:hover{border-color:#4453b0}
+  .badge{font-size:12px;padding:2px 8px;border-radius:20px;border:1px solid #2a336b;background:#121a3c}
+  textarea{width:100%;min-height:100px;background:#0a0e18;border:1px solid #202642;color:#e7ecff;border-radius:10px;padding:10px;font-family:monospace}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="wrap">
+    <div class="row" style="justify-content:space-between;">
+      <h1>Cynthia Core v1.0 — Three-Node, Chart-First, Lindley Voice (FIXED)</h1>
+      <div class="row">
+        <span class="badge">Download buttons fixed</span>
+        <span class="badge">ChunkText regex fixed</span>
+        <button onclick="download('app.py')">Download app.py</button>
+        <button onclick="download('static/main.js')">Download main.js</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="grid">
+    
+    <!-- Python Flask App -->
+    <div class="card">
+      <h3>app.py</h3>
+      <textarea id="f_app.py" class="file">from flask import Flask, render_template, request, jsonify
+import json
+from datetime import datetime
+
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/chart', methods=['POST'])
+def calculate_chart():
+    data = request.get_json()
+    # Mock chart calculation - replace with real astrology calculation
+    chart = {
+        "Body": {"sun_gate": "34.2", "earth_gate": "20.5", "flow": 0.6, "stress": 0.4},
+        "Heart": {"sun_gate": "49.4", "earth_gate": "4.3", "flow": 0.5, "stress": 0.5},
+        "Mind": {"sun_gate": "11.3", "earth_gate": "12.5", "flow": 0.7, "stress": 0.3}
+    }
+    return jsonify({"success": True, "chart": {"nodes": chart}})
+
+@app.route('/api/respond', methods=['POST'])
+def respond():
+    data = request.get_json()
+    text = data.get('text', '')
+    
+    # Simple node selection based on keywords
+    node = "Heart"
+    if any(word in text.lower() for word in ["think", "analyze", "logic"]):
+        node = "Mind"
+    elif any(word in text.lower() for word in ["do", "build", "move", "action"]):
+        node = "Body"
+    
+    reply = f"[{node}] I understand you're saying: {text}"
+    
+    return jsonify({
+        "success": True,
+        "node": node,
+        "reply": reply,
+        "weights": {"Body": 0.3, "Heart": 0.4, "Mind": 0.3}
+    })
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
+</textarea>
+    </div>
+
+    <!-- Fixed JavaScript -->
+    <div class="card">
+      <h3>static/main.js (FIXED)</h3>
+      <textarea id="f_static/main.js" class="file">// Fixed main.js with corrected chunkText function
+
+function chunkText(t){
+  // break at punctuation for breathing (lookbehind) - FIXED: single backslashes
+  return t.split(/(?<=[\.\?\!\;])\s+/).filter(Boolean);
+}
+
+function speakText(text) {
+  if (!text || !window.speechSynthesis) return;
+  
+  const chunks = chunkText(text);
+  let index = 0;
+  
+  function speakNext() {
+    if (index >= chunks.length) return;
+    
+    const utterance = new SpeechSynthesisUtterance(chunks[index]);
+    utterance.rate = 0.9;
+    utterance.pitch = 1.1;
+    
+    utterance.onend = () => {
+      index++;
+      setTimeout(speakNext, 200); // Brief pause between chunks
+    };
+    
+    speechSynthesis.speak(utterance);
+  }
+  
+  speakNext();
+}
+
+// Chat functionality
+async function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const chatLog = document.getElementById('chatLog');
+  
+  if (!input.value.trim()) return;
+  
+  const userMessage = input.value;
+  input.value = '';
+  
+  // Add user message to chat
+  chatLog.innerHTML += `<div class="message user">You: ${userMessage}</div>`;
+  
+  try {
+    const response = await fetch('/api/respond', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text: userMessage})
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      chatLog.innerHTML += `<div class="message cynthia">[${data.node}] ${data.reply}</div>`;
+      speakText(data.reply);
+    }
+  } catch (error) {
+    chatLog.innerHTML += `<div class="message error">Error: ${error.message}</div>`;
+  }
+  
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// Chart calculation
+async function calculateChart() {
+  const date = document.getElementById('birthDate').value;
+  const time = document.getElementById('birthTime').value;
+  const place = document.getElementById('birthPlace').value;
+  
+  if (!date || !time || !place) {
+    alert('Please fill in all birth data fields');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/chart', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({date, time, place})
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      displayChart(data.chart);
+    }
+  } catch (error) {
+    console.error('Chart calculation failed:', error);
+  }
+}
+
+function displayChart(chart) {
+  const container = document.getElementById('chartDisplay');
+  container.innerHTML = '<h3>Chart Analysis:</h3>';
+  
+  Object.entries(chart.nodes).forEach(([node, data]) => {
+    container.innerHTML += `
+      <div class="node-display">
+        <h4>${node}</h4>
+        <p>Sun: ${data.sun_gate} | Earth: ${data.earth_gate}</p>
+        <p>Flow: ${(data.flow * 100).toFixed(0)}% | Stress: ${(data.stress * 100).toFixed(0)}%</p>
+      </div>
+    `;
+  });
+}
+</textarea>
+    </div>
+
+    <!-- HTML Template -->
+    <div class="card">
+      <h3>templates/index.html</h3>
+      <textarea id="f_templates/index.html" class="file"><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cynthia Core v1.0</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #0b0e16; color: #e7ecff; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; }
+    .card { background: #121628; border: 1px solid #1e2446; border-radius: 14px; padding: 20px; margin: 20px 0; }
+    input, button { padding: 10px; margin: 5px; border-radius: 8px; border: 1px solid #26306b; background: #0a0e18; color: #e7ecff; }
+    button { cursor: pointer; background: #182046; }
+    button:hover { border-color: #4453b0; }
+    #chatLog { height: 300px; overflow-y: auto; border: 1px solid #26306b; padding: 10px; background: #0a0e18; border-radius: 8px; }
+    .message { margin: 10px 0; padding: 8px; border-radius: 8px; }
+    .user { background: #16224b; }
+    .cynthia { background: #10183b; }
+    .error { background: #5c2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cynthia Core v1.0</h1>
+    
+    <div class="card">
+      <h2>Birth Data</h2>
+      <input type="date" id="birthDate" placeholder="Birth Date">
+      <input type="time" id="birthTime" placeholder="Birth Time">
+      <input type="text" id="birthPlace" placeholder="Birth Place">
+      <button onclick="calculateChart()">Calculate Chart</button>
+      <div id="chartDisplay"></div>
+    </div>
+    
+    <div class="card">
+      <h2>Chat with Cynthia</h2>
+      <div id="chatLog"></div>
+      <div style="margin-top: 10px;">
+        <input type="text" id="messageInput" placeholder="Type your message..." style="width: 70%;">
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="/static/main.js"></script>
+</body>
+</html>
+</textarea>
+    </div>
+
+  </div>
+</div>
+
+<!-- FIXED SCRIPT SECTION -->
+<script>
+function download(path){
+  // try both id styles: f_static/index.html and f_static_index.html
+  const idSlash = 'f_'+path;
+  const idUnd   = 'f_'+path.replaceAll('/','_');
+  const ta = document.getElementById(idSlash) || document.getElementById(idUnd);
+  if(!ta){ alert('Could not find: '+path); return; }
+  const blob = new Blob([ta.value],{type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = path;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(a.href);
+}
+function copy(id){
+  const ta = document.getElementById(id);
+  if(!ta){ alert('Could not find: '+id); return; }
+  ta.select();
+  document.execCommand('copy');
+}
+</script>
+
+</body>
+</html>
