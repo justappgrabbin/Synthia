@@ -1,0 +1,142 @@
+{
+  "type": "Game",
+  "generated": "2025-12-09T04:33:35.464Z",
+  "chart": {
+    "personality": {
+      "sun": {
+        "gate": 59,
+        "line": 2,
+        "color": 3,
+        "tone": 4,
+        "base": 2
+      },
+      "earth": {
+        "gate": 55,
+        "line": 4,
+        "color": 5,
+        "tone": 2,
+        "base": 1
+      }
+    },
+    "design": {
+      "sun": {
+        "gate": 6,
+        "line": 4,
+        "color": 2,
+        "tone": 3,
+        "base": 1
+      },
+      "earth": {
+        "gate": 36,
+        "line": 2,
+        "color": 4,
+        "tone": 1,
+        "base": 3
+      }
+    },
+    "gates": [
+      59,
+      6,
+      46,
+      25,
+      18,
+      17,
+      32,
+      57,
+      51
+    ]
+  },
+  "gnomes": [
+    {
+      "gate": 6,
+      "name": "Friction",
+      "city": "Body",
+      "center": "Solar Plexus",
+      "techDuty": "Lock manager",
+      "emotionalState": "Irritable"
+    },
+    {
+      "gate": 18,
+      "name": "Correction",
+      "city": "Body",
+      "center": "Spleen",
+      "techDuty": "Log auditing",
+      "emotionalState": "Discerning"
+    },
+    {
+      "gate": 25,
+      "name": "Innocence",
+      "city": "Spirit",
+      "center": "G",
+      "techDuty": "Purity check",
+      "emotionalState": "Innocent"
+    },
+    {
+      "gate": 46,
+      "name": "Serendipity",
+      "city": "Body",
+      "center": "G",
+      "techDuty": "Discovery engine",
+      "emotionalState": "Determined"
+    },
+    {
+      "gate": 59,
+      "name": "Intimacy",
+      "city": "Mind",
+      "center": "Sacral",
+      "techDuty": "Connection broker",
+      "emotionalState": "Open"
+    }
+  ],
+  "template": "Platformer with your gnome characters as NPCs",
+  "config": {
+    "title": "Five City Resonance",
+    "characters": [
+      {
+        "id": 6,
+        "name": "Friction",
+        "role": "Lock manager",
+        "stats": {
+          "energy": 70,
+          "focus": 60
+        }
+      },
+      {
+        "id": 18,
+        "name": "Correction",
+        "role": "Log auditing",
+        "stats": {
+          "energy": 70,
+          "focus": 60
+        }
+      },
+      {
+        "id": 25,
+        "name": "Innocence",
+        "role": "Purity check",
+        "stats": {
+          "energy": 70,
+          "focus": 60
+        }
+      },
+      {
+        "id": 46,
+        "name": "Serendipity",
+        "role": "Discovery engine",
+        "stats": {
+          "energy": 70,
+          "focus": 60
+        }
+      },
+      {
+        "id": 59,
+        "name": "Intimacy",
+        "role": "Connection broker",
+        "stats": {
+          "energy": 70,
+          "focus": 85
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0014">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SYNTH OS — Autonomous Operating System</title>
+<style>
+:root {
+  --bg: #0a0014; --surface: #140a25; --surface-2: #1e1035; --surface-3: #2a1848;
+  --border: #3d2060; --border-glow: #5a2d8a; --accent: #00f0d0; --accent-2: #b829f7;
+  --accent-3: #e0aaff; --text: #f0e8ff; --text-2: #9a80b8; --text-3: #6a5088;
+  --danger: #ff2a6d; --warning: #ffc800; --success: #00f5a0; --info: #00d4ff;
+  --terminal-bg: #050010; --terminal-text: #00ffcc; --terminal-prompt: #b829f7;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+
+/* ===== DESKTOP ===== */
+#desktop { height: 100vh; display: flex; flex-direction: column; position: relative; background: radial-gradient(ellipse at 50% 0%, #1a0a30 0%, #0a0014 60%); }
+
+/* ===== TOP BAR ===== */
+.top-bar { padding: 6px 14px; background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-shrink: 0; z-index: 500; backdrop-filter: blur(20px); }
+.os-logo { width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; color: white; animation: logoPulse 4s ease-in-out infinite; box-shadow: 0 0 20px rgba(184,41,247,0.5); }
+@keyframes logoPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(184,41,247,0.5); } 50% { box-shadow: 0 0 0 12px rgba(184,41,247,0); } }
+.os-title { font-size: 13px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent-3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 0.5px; }
+.top-spacer { flex: 1; }
+.top-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; gap: 4px; }
+.top-btn:hover { border-color: var(--accent-2); color: var(--accent-3); background: rgba(184,41,247,0.15); box-shadow: 0 0 10px rgba(184,41,247,0.3); }
+.top-btn.active { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: white; border-color: transparent; box-shadow: 0 0 15px rgba(184,41,247,0.5); }
+.top-status { display: flex; align-items: center; gap: 6px; padding: 3px 8px; background: var(--surface-3); border-radius: 8px; font-size: 9px; color: var(--text-3); border: 1px solid var(--border); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); animation: blink 2s infinite; }
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+/* ===== DESKTOP AREA ===== */
+.desktop-area { flex: 1; position: relative; overflow: hidden; }
+.desktop-grid { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); grid-auto-rows: 100px; gap: 12px; padding: 20px; align-content: start; }
+.desktop-icon { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 8px; border-radius: 12px; cursor: pointer; transition: all 0.3s; border: 1px solid transparent; }
+.desktop-icon:hover { background: rgba(184,41,247,0.1); border-color: var(--border-glow); transform: translateY(-4px); box-shadow: 0 8px 24px rgba(184,41,247,0.2); }
+.desktop-icon:active { transform: scale(0.95); }
+.desktop-icon-icon { font-size: 32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.desktop-icon-label { font-size: 10px; font-weight: 600; color: var(--text-2); text-align: center; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== WINDOWS ===== */
+.window { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 30px rgba(184,41,247,0.1); transition: transform 0.2s, opacity 0.2s; min-width: 300px; min-height: 200px; }
+.window.maximized { inset: 40px 10px 60px 10px !important; width: auto !important; height: auto !important; border-radius: 0; }
+.window.minimized { transform: scale(0.1); opacity: 0; pointer-events: none; }
+.window-header { padding: 8px 12px; background: linear-gradient(90deg, var(--surface-2), var(--surface-3)); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; cursor: grab; user-select: none; }
+.window-header:active { cursor: grabbing; }
+.window-icon { font-size: 14px; }
+.window-title { font-size: 11px; font-weight: 700; color: var(--accent-3); flex: 1; }
+.window-controls { display: flex; gap: 4px; }
+.win-btn { width: 20px; height: 20px; border-radius: 50%; border: none; cursor: pointer; font-size: 10px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.win-btn:hover { transform: scale(1.1); }
+.win-min { background: var(--warning); color: #000; }
+.win-max { background: var(--info); color: #000; }
+.win-close { background: var(--danger); color: white; }
+.window-body { flex: 1; overflow: auto; position: relative; }
+
+/* ===== APP CENTER ===== */
+.app-center { padding: 20px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
+.app-tile { background: linear-gradient(135deg, var(--surface-2), var(--surface-3)); border: 1px solid var(--border); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; cursor: pointer; transition: all 0.3s; position: relative; }
+.app-tile:hover { border-color: var(--accent-2); transform: translateY(-4px); box-shadow: 0 12px 30px rgba(184,41,247,0.25); }
+.app-tile-icon { font-size: 40px; }
+.app-tile-name { font-size: 12px; font-weight: 700; color: var(--text); text-align: center; }
+.app-tile-desc { font-size: 9px; color: var(--text-3); text-align: center; }
+.app-tile-badge { position: absolute; top: -6px; right: -6px; background: var(--danger); color: white; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 10px; }
+
+/* ===== BROWSER ===== */
+.browser-bar { padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); display: flex; gap: 6px; align-items: center; }
+.browser-nav { display: flex; gap: 4px; }
+.browser-btn { width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-3); color: var(--text-2); cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.browser-btn:hover { background: var(--accent-2); color: white; }
+.browser-url { flex: 1; padding: 4px 10px; background: var(--surface-3); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 11px; outline: none; }
+.browser-url:focus { border-color: var(--accent-2); }
+.browser-frame { width: 100%; height: 100%; border: none; background: white; }
+
+/* ===== FILE ANALYZER / INGESTION ===== */
+.ingest-dropzone { border: 2px dashed var(--border); border-radius: 16px; padding: 40px; text-align: center; transition: all 0.3s; background: linear-gradient(135deg, rgba(184,41,247,0.05), rgba(0,240,208,0.05)); }
+.ingest-dropzone.dragover { border-color: var(--accent-2); background: rgba(184,41,247,0.1); box-shadow: 0 0 30px rgba(184,41,247,0.2); }
+.ingest-dropzone-icon { font-size: 48px; margin-bottom: 12px; }
+.ingest-dropzone-text { font-size: 14px; font-weight: 600; color: var(--text-2); }
+.ingest-dropzone-hint { font-size: 11px; color: var(--text-3); margin-top: 6px; }
+.analyzer-result { padding: 16px; }
+.analyzer-section { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.analyzer-section h3 { font-size: 12px; color: var(--accent-3); margin-bottom: 8px; }
+.analyzer-section p { font-size: 11px; color: var(--text-2); line-height: 1.5; }
+.analyzer-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.analyzer-tag { padding: 2px 8px; background: var(--surface-3); border-radius: 6px; font-size: 9px; color: var(--accent); border: 1px solid var(--border); }
+
+/* ===== CHAT (Synthia) ===== */
+.chat-messages { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.chat-msg { max-width: 88%; padding: 10px 12px; border-radius: 12px; font-size: 13px; line-height: 1.5; word-wrap: break-word; animation: msgSlide 0.3s ease; }
+@keyframes msgSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.chat-msg.user { align-self: flex-end; background: linear-gradient(135deg, var(--accent-2), #7c3aed); color: white; border-bottom-right-radius: 3px; }
+.chat-msg.ai { align-self: flex-start; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+.chat-msg-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 10px; font-weight: 700; color: var(--accent-3); text-transform: uppercase; }
+.chat-msg-time { font-size: 9px; color: var(--text-3); margin-left: auto; }
+.chat-input-area { padding: 10px 14px; background: var(--surface-2); border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: flex-end; }
+.chat-textarea { flex: 1; padding: 8px 12px; background: var(--surface-3); border: 1px solid var(--border); border-radius: 18px; color: var(--text); font-size: 13px; outline: none; resize: none; max-height: 100px; min-height: 36px; font-family: inherit; }
+.chat-textarea:focus { border-color: var(--accent-2); box-shadow: 0 0 10px rgba(184,41,247,0.2); }
+.chat-send-btn { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: white; border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(184,41,247,0.4); transition: all 0.2s; }
+.chat-send-btn:hover { filter: brightness(1.15); box-shadow: 0 0 15px rgba(184,41,247,0.6); }
+
+/* ===== TERMINAL ===== */
+.terminal-panel { position: fixed; bottom: 50px; left: 0; right: 0; height: 0; background: var(--terminal-bg); border-top: 2px solid var(--accent-2); display: flex; flex-direction: column; transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 400; overflow: hidden; box-shadow: 0 -10px 40px rgba(184,41,247,0.2); }
+.terminal-panel.open { height: 40vh; }
+.terminal-header { padding: 8px 14px; background: linear-gradient(90deg, var(--surface), var(--surface-2)); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.terminal-title { font-size: 12px; font-weight: 700; color: var(--accent-3); font-family: 'SF Mono', Monaco, monospace; }
+.terminal-title::before { content: '>'; color: var(--accent); margin-right: 6px; }
+.terminal-actions { display: flex; gap: 6px; }
+.terminal-btn { padding: 3px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font-size: 10px; cursor: pointer; font-family: 'SF Mono', Monaco, monospace; }
+.terminal-btn:hover { border-color: var(--accent-2); color: var(--accent-3); }
+.terminal-body { flex: 1; overflow-y: auto; padding: 10px 14px; font-family: 'SF Mono', Monaco, 'Courier New', monospace; font-size: 12px; line-height: 1.6; }
+.terminal-line { margin-bottom: 2px; word-wrap: break-word; }
+.terminal-prompt { color: var(--terminal-prompt); font-weight: 700; }
+.terminal-command { color: var(--terminal-text); }
+.terminal-output { color: var(--text-2); padding-left: 16px; }
+.terminal-error { color: var(--danger); padding-left: 16px; }
+.terminal-success { color: var(--success); padding-left: 16px; }
+.terminal-input-line { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-top: 1px solid var(--border); }
+.terminal-input { flex: 1; background: transparent; border: none; color: var(--terminal-text); font-family: 'SF Mono', Monaco, monospace; font-size: 12px; outline: none; caret-color: var(--accent); }
+
+/* ===== DOCK ===== */
+.dock { position: fixed; bottom: 0; left: 0; right: 0; height: 50px; background: linear-gradient(0deg, var(--surface) 0%, transparent 100%); display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 20px; z-index: 500; }
+.dock-item { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, var(--surface-2), var(--surface-3)); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; transition: all 0.3s; position: relative; }
+.dock-item:hover { transform: translateY(-8px) scale(1.1); border-color: var(--accent-2); box-shadow: 0 8px 20px rgba(184,41,247,0.4); }
+.dock-item.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(0,240,208,0.4); }
+.dock-item-badge { position: absolute; top: -4px; right: -4px; width: 16px; height: 16px; background: var(--danger); border-radius: 50%; font-size: 8px; font-weight: 800; color: white; display: flex; align-items: center; justify-content: center; }
+
+/* ===== OVERLAYS ===== */
+.overlay { position: fixed; inset: 0; background: rgba(10,0,20,0.85); display: none; align-items: center; justify-content: center; z-index: 600; backdrop-filter: blur(8px); padding: 20px; }
+.overlay.active { display: flex; }
+.overlay-content { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.7); }
+.overlay-header { padding: 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.overlay-body { padding: 14px; overflow-y: auto; flex: 1; }
+.overlay-footer { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; gap: 6px; justify-content: flex-end; }
+.btn { padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); font-size: 12px; cursor: pointer; font-weight: 600; transition: all 0.2s; }
+.btn:hover { border-color: var(--accent-2); color: var(--accent-3); }
+.btn.primary { background: linear-gradient(135deg, var(--accent-2), var(--accent)); color: white; border: none; box-shadow: 0 2px 10px rgba(184,41,247,0.4); }
+.btn.primary:hover { filter: brightness(1.1); box-shadow: 0 4px 15px rgba(184,41,247,0.6); }
+
+/* ===== TOAST ===== */
+.toast { position: fixed; top: 50px; right: 14px; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent-2); border-radius: 8px; padding: 10px 14px; font-size: 12px; z-index: 700; animation: toastSlide 0.3s ease; max-width: 300px; color: var(--text); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+@keyframes toastSlide { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ===== CONTEXT MENU ===== */
+.ctx-menu { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; z-index: 800; display: none; min-width: 180px; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+.ctx-item { padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 8px; color: var(--text); transition: all 0.15s; }
+.ctx-item:hover { background: var(--surface-2); color: var(--accent-3); }
+.ctx-item.danger { color: var(--danger); }
+.ctx-item.danger:hover { background: rgba(255,42,109,0.1); }
+
+/* ===== MORPH ANIMATION ===== */
+.morphing { animation: morphPulse 0.6s ease; }
+@keyframes morphPulse { 0% { transform: scale(1); } 50% { transform: scale(1.02); filter: brightness(1.2); } 100% { transform: scale(1); } }
+
+/* ===== SCROLLBARS ===== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-glow); }
+
+
+/* ===== TOUCH-FRIENDLY MODE ===== */
+button, .btn, .top-btn, .dock-item, .desktop-icon, .app-tile, .ctx-item { touch-action: manipulation; }
+.window-header { min-height: 44px; touch-action: none; -webkit-user-select: none; user-select: none; }
+.window { touch-action: auto; }
+.win-btn { width: 32px; height: 32px; font-size: 13px; }
+.window-icon { font-size: 18px; }
+.window-title { font-size: 13px; }
+.top-btn { min-height: 36px; padding: 8px 12px; font-size: 12px; }
+.dock { height: 62px; gap: 10px; padding-bottom: env(safe-area-inset-bottom); }
+.dock-item { width: 54px; height: 54px; font-size: 26px; }
+.desktop-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); grid-auto-rows: 116px; gap: 14px; padding: 18px; }
+.desktop-icon { min-height: 96px; padding: 14px 10px; }
+.desktop-icon-icon { font-size: 38px; }
+.desktop-icon-label { font-size: 12px; max-width: 96px; }
+.chat-textarea, .browser-url, .terminal-input { min-height: 44px; font-size: 16px; }
+.chat-send-btn { width: 46px; height: 46px; font-size: 18px; }
+.browser-btn { width: 40px; height: 40px; font-size: 16px; }
+.terminal-btn { min-height: 36px; padding: 8px 12px; }
+
+@media (max-width: 768px) {
+  .top-bar { gap: 6px; padding: 8px 10px; overflow-x: auto; }
+  .os-title { font-size: 15px; white-space: nowrap; }
+  .top-status { display: none; }
+  .window { min-width: min(92vw, 320px); min-height: 240px; max-width: 96vw; }
+  .window:not(.maximized) { width: min(92vw, 620px) !important; }
+  .window.maximized { inset: 52px 6px 72px 6px !important; border-radius: 12px; }
+  .app-center { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .desktop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 118px; padding: 14px; }
+  .dock { height: 70px; justify-content: flex-start; overflow-x: auto; }
+}
+
+
+/* ===== TOUCH-FRIENDLY TOP BAR PATCH ===== */
+.top-bar { touch-action: manipulation; }
+.top-btn { position: relative; z-index: 2; user-select: none; -webkit-user-select: none; }
+@media (max-width: 768px) {
+  .top-bar { gap: 8px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; }
+  .top-spacer { flex: 0 0 4px; }
+  .top-status { flex: 0 0 auto; }
+  #clock { flex: 0 0 auto; }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .window { min-width: 200px; }
+  .app-center { grid-template-columns: repeat(3, 1fr); }
+  .desktop-grid { grid-template-columns: repeat(3, 1fr); }
+  .terminal-panel.open { height: 50vh; }
+}
+
+pre { background: var(--terminal-bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; overflow-x: auto; font-size: 11px; margin: 6px 0; color: var(--terminal-text); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.45; } 40% { transform: translateY(-5px); opacity: 1; } }
+code { font-family: 'SF Mono', Monaco, monospace; color: var(--accent-3); }
+
+
+/* ===== PREMIUM PURPLE/TEAL FULLSCREEN SHELL ===== */
+:root {
+  --bg:#070014;
+  --surface:#120a25;
+  --surface-2:#1b1034;
+  --surface-3:#26164a;
+  --border:#3c236a;
+  --border-glow:#7b3ff2;
+  --accent:#00f0d0;
+  --accent-2:#9d4edd;
+  --accent-3:#d9b8ff;
+  --text:#f4edff;
+  --text-2:#bda7df;
+  --text-3:#80699e;
+}
+html, body, #desktop { height:100dvh; }
+#desktop { background:
+  radial-gradient(circle at 12% 0%, rgba(157,78,221,.28), transparent 32%),
+  radial-gradient(circle at 85% 12%, rgba(0,240,208,.16), transparent 34%),
+  linear-gradient(180deg,#080015 0%,#05000f 100%); }
+.top-bar {
+  min-height:56px;
+  padding:8px 12px;
+  gap:10px;
+  background:rgba(14,5,30,.76);
+  border-bottom:1px solid rgba(157,78,221,.32);
+  box-shadow:0 14px 38px rgba(0,0,0,.28);
+}
+.os-logo { width:34px; height:34px; border-radius:12px; font-size:14px; box-shadow:0 0 24px rgba(157,78,221,.38); }
+.os-title { font-size:14px; letter-spacing:.14em; white-space:nowrap; }
+.top-clock { font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; min-width:46px; text-align:right; }
+.top-status.compact { padding:5px 8px; font-size:9px; white-space:nowrap; background:rgba(38,22,74,.64); }
+.minimized-rail { flex:1; display:flex; align-items:center; gap:8px; overflow-x:auto; overflow-y:hidden; padding:3px 0; min-width:0; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.minimized-rail::-webkit-scrollbar { display:none; }
+.rail-empty { font-size:10px; color:var(--text-3); border:1px solid rgba(157,78,221,.18); border-radius:999px; padding:7px 10px; background:rgba(255,255,255,.03); white-space:nowrap; }
+.rail-pill { border:1px solid rgba(0,240,208,.24); background:linear-gradient(135deg,rgba(157,78,221,.24),rgba(0,240,208,.08)); color:var(--text); border-radius:999px; padding:8px 12px; min-height:34px; display:flex; align-items:center; gap:7px; font-size:11px; font-weight:800; letter-spacing:.04em; white-space:nowrap; box-shadow:0 0 18px rgba(0,240,208,.08); }
+.rail-pill:active { transform:scale(.97); }
+.desktop-area { padding:10px 10px 74px; }
+.desktop-grid { inset:10px 10px 74px; display:flex; align-items:center; justify-content:center; opacity:.35; pointer-events:none; }
+.desktop-grid::after { content:'SYNTH OS'; font-size:clamp(34px,10vw,98px); font-weight:900; letter-spacing:.18em; color:rgba(217,184,255,.08); text-shadow:0 0 40px rgba(157,78,221,.20); }
+.desktop-grid > * { display:none !important; }
+.window {
+  position:absolute !important;
+  left:10px !important;
+  top:10px !important;
+  width:calc(100% - 20px) !important;
+  height:calc(100% - 94px) !important;
+  min-width:0 !important;
+  min-height:0 !important;
+  border-radius:22px;
+  border:1px solid rgba(157,78,221,.36);
+  background:linear-gradient(180deg,rgba(22,10,44,.96),rgba(9,3,20,.98));
+  box-shadow:0 28px 90px rgba(0,0,0,.68), 0 0 44px rgba(157,78,221,.13), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.window.maximized { inset:auto !important; border-radius:22px; }
+.window.minimized { display:none !important; transform:none; opacity:1; pointer-events:none; }
+.window-header { min-height:50px; padding:10px 14px; background:linear-gradient(90deg,rgba(38,22,74,.9),rgba(18,10,37,.78)); touch-action:none; }
+.window-title { font-size:12px; letter-spacing:.09em; text-transform:uppercase; }
+.window-icon { font-size:16px; }
+.win-btn { width:28px; height:28px; border-radius:10px; font-size:12px; }
+.win-max { display:none; }
+.window-body { background:rgba(0,0,0,.08); }
+.premium-dock {
+  height:74px;
+  gap:12px;
+  padding:9px 14px calc(9px + env(safe-area-inset-bottom));
+  background:linear-gradient(180deg,rgba(5,0,15,.2),rgba(10,0,22,.92));
+  border-top:1px solid rgba(157,78,221,.28);
+  backdrop-filter:blur(18px);
+}
+.premium-dock .dock-item {
+  width:min(30vw,118px);
+  height:56px;
+  border-radius:18px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  color:var(--text);
+  background:linear-gradient(180deg,rgba(38,22,74,.78),rgba(18,10,37,.92));
+  border:1px solid rgba(157,78,221,.34);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 10px 32px rgba(0,0,0,.34);
+}
+.premium-dock .dock-item span:first-child { font-size:21px; line-height:1; }
+.premium-dock .dock-item small { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-2); font-weight:850; }
+.premium-dock .dock-item:hover { transform:translateY(-4px); }
+.premium-dock .dock-item.active { border-color:rgba(0,240,208,.72); box-shadow:0 0 22px rgba(0,240,208,.20); }
+.terminal-panel { bottom:74px; border-top-color:rgba(157,78,221,.52); }
+.terminal-panel.open { height:min(44dvh,420px); }
+.app-center { grid-template-columns:repeat(auto-fill,minmax(138px,1fr)); gap:14px; padding:18px; }
+.app-tile { border-radius:18px; min-height:132px; background:linear-gradient(145deg,rgba(38,22,74,.88),rgba(12,6,28,.96)); }
+@media (max-width: 520px) {
+  .top-status.compact span { display:none; }
+  .top-status.compact { padding:7px; }
+  .os-title { font-size:12px; letter-spacing:.1em; }
+  .window { left:8px !important; top:8px !important; width:calc(100% - 16px) !important; height:calc(100% - 90px) !important; border-radius:18px; }
+  .window-header { min-height:48px; }
+  .app-center { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+
+</style>
+<base target="_blank">
+</head>
+<body>
+<div id="desktop">
+  <div class="top-bar">
+    <div class="os-logo">S</div>
+    <div class="os-title">SYNTH OS</div>
+    <div class="minimized-rail" id="minimized-rail" aria-label="Minimized apps">
+      <span class="rail-empty">No minimized apps</span>
+    </div>
+    <div class="top-status compact" title="MCP / system status">
+      <div class="status-dot"></div>
+      <span id="system-status">MCP Ready</span>
+    </div>
+    <span id="clock" class="top-clock"></span>
+  </div>
+
+  <div class="desktop-area" id="desktop-area">
+    <div class="desktop-grid" id="desktop-grid">
+      <!-- Default desktop icons -->
+      <div class="desktop-icon" onclick="openSynthia()">
+        <div class="desktop-icon-icon">&#129302;</div>
+        <div class="desktop-icon-label">Synthia</div>
+      </div>
+      <div class="desktop-icon" onclick="openAppCenter()">
+        <div class="desktop-icon-icon">&#127918;</div>
+        <div class="desktop-icon-label">App Center</div>
+      </div>
+      <div class="desktop-icon" onclick="openBrowser()">
+        <div class="desktop-icon-icon">&#127760;</div>
+        <div class="desktop-icon-label">Browser</div>
+      </div>
+      <div class="desktop-icon" onclick="openIngestor()">
+        <div class="desktop-icon-icon">&#128229;</div>
+        <div class="desktop-icon-label">File Ingest</div>
+      </div>
+      <div class="desktop-icon" onclick="openFileManager()">
+        <div class="desktop-icon-icon">&#128193;</div>
+        <div class="desktop-icon-label">Files</div>
+      </div>
+      <div class="desktop-icon" onclick="openSettings()">
+        <div class="desktop-icon-icon">&#9881;</div>
+        <div class="desktop-icon-label">Settings</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Terminal Panel -->
+<div class="terminal-panel" id="terminal-panel">
+  <div class="terminal-header">
+    <div class="terminal-title">synth@os:~$</div>
+    <div class="terminal-actions">
+      <button class="terminal-btn" onclick="clearTerminal()">clear</button>
+      <button class="terminal-btn" onclick="toggleTerminal()">close</button>
+    </div>
+  </div>
+  <div class="terminal-body" id="terminal-body"></div>
+  <div class="terminal-input-line">
+    <span class="terminal-prompt">$</span>
+    <input type="text" class="terminal-input" id="terminal-input" placeholder="Type command..." onkeydown="handleTerminalKey(event)" autocomplete="off" spellcheck="false">
+  </div>
+</div>
+
+<!-- Dock -->
+<div class="dock premium-dock" id="dock">
+  <button class="dock-item active" onclick="openSynthia()" title="Synthia AI" aria-label="Open Synthia">
+    <span>&#129302;</span><small>Synthia</small>
+  </button>
+  <button class="dock-item" onclick="openFileManager()" title="Files" aria-label="Open Files">
+    <span>&#128193;</span><small>Files</small>
+  </button>
+  <button class="dock-item" onclick="openAppCenter()" title="App Center" aria-label="Open App Center">
+    <span>&#127918;</span><small>Apps</small>
+    <span class="dock-item-badge" id="app-badge">0</span>
+  </button>
+</div>
+
+<!-- Context Menu -->
+<div class="ctx-menu" id="ctx-menu">
+  <div class="ctx-item" onclick="ctxOpen()">&#128194; Open</div>
+  <div class="ctx-item" onclick="ctxAnalyze()">&#128300; Analyze</div>
+  <div class="ctx-item" onclick="ctxAddToTray()">&#128229; Add to Tray</div>
+  <div class="ctx-item" onclick="ctxRename()">&#9998; Rename</div>
+  <div class="ctx-item danger" onclick="ctxDelete()">&#128465; Delete</div>
+</div>
+
+<!-- Overlays -->
+<div class="overlay" id="overlay" onclick="closeOverlay(event)">
+  <div class="overlay-content" onclick="event.stopPropagation()">
+    <div class="overlay-header">
+      <span id="overlay-title">Title</span>
+      <button class="btn" onclick="closeOverlay()" style="width:28px;height:28px;padding:0;">&#10005;</button>
+    </div>
+    <div class="overlay-body" id="overlay-body"></div>
+    <div class="overlay-footer" id="overlay-footer"></div>
+  </div>
+</div>
+
+<script>
+
+// ==================== MORPHOS STATE ====================
+function safeJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (err) {
+    console.warn('SYNTH OS storage parse failed for', key, err);
+    return fallback;
+  }
+}
+
+const OS = {
+  windows: [],
+  apps: [
+    { id: 'synthia', name: 'Synthia', icon: '&#129302;', desc: 'AI Orchestrator', type: 'chat', open: true },
+    { id: 'browser', name: 'Browser', icon: '&#127760;', desc: 'Web Browser', type: 'browser', open: false },
+    { id: 'files', name: 'Files', icon: '&#128193;', desc: 'File Manager', type: 'files', open: false },
+    { id: 'terminal', name: 'Terminal', icon: '&#128187;', desc: 'Command Line', type: 'terminal', open: false },
+    { id: 'ingest', name: 'Ingestor', icon: '&#128229;', desc: 'File Analyzer', type: 'ingest', open: false },
+    { id: 'settings', name: 'Settings', icon: '&#9881;', desc: 'System Settings', type: 'settings', open: false }
+  ],
+  tray: [],
+  files: [],
+  messages: [],
+  knowledge: safeJSON('morph_knowledge', []),
+  earnings: safeJSON('morph_earnings', { total: 0, history: [] }),
+  goals: safeJSON('morph_goals', []),
+  sandbox: safeJSON('morph_sandbox', []),
+  settings: safeJSON('morph_settings', { theme: 'dark', animations: true }),
+  zIndex: 100,
+  ctxTarget: null,
+  terminalOpen: false,
+  dragWindow: null,
+  dragPointerId: null,
+  dragOffset: { x: 0, y: 0 }
+};
+
+function saveOS() {
+  try {
+    localStorage.setItem('morph_knowledge', JSON.stringify(OS.knowledge));
+  localStorage.setItem('morph_earnings', JSON.stringify(OS.earnings));
+  localStorage.setItem('morph_goals', JSON.stringify(OS.goals));
+  localStorage.setItem('morph_sandbox', JSON.stringify(OS.sandbox));
+  localStorage.setItem('morph_files', JSON.stringify(OS.files));
+  localStorage.setItem('morph_messages', JSON.stringify(OS.messages.slice(-100)));
+  } catch (err) {
+    console.warn('SYNTH OS save failed', err);
+    showToast('Storage unavailable: changes kept for this session only');
+  }
+}
+function loadOS() {
+  OS.files = safeJSON('morph_files', []);
+  OS.messages = safeJSON('morph_messages', []);
+  OS.tray = OS.files.slice();
+  updateDesktopIcons();
+  updateAppBadge();
+}
+
+// ==================== WINDOW MANAGER ====================
+function createWindow(appId, title, content, options) {
+  const app = OS.apps.find(a => a.id === appId);
+  const existing = OS.windows.find(w => w.appId === appId);
+  if (existing && !options?.multi) {
+    focusWindow(existing.id);
+    return existing;
+  }
+
+  const id = 'win_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  const win = {
+    id, appId, title, 
+    x: 50 + (OS.windows.length * 30) % 200,
+    y: 50 + (OS.windows.length * 30) % 150,
+    width: options?.width || 600,
+    height: options?.height || 400,
+    maximized: false, minimized: false
+  };
+  OS.windows.push(win);
+
+  const el = document.createElement('div');
+  el.className = 'window';
+  el.id = id;
+  el.style.left = win.x + 'px';
+  el.style.top = win.y + 'px';
+  el.style.width = win.width + 'px';
+  el.style.height = win.height + 'px';
+  el.style.zIndex = ++OS.zIndex;
+
+  el.innerHTML = `
+    <div class="window-header" onpointerdown="startDrag(event, '${id}')">
+      <span class="window-icon">${app?.icon || '&#128230;'}</span>
+      <span class="window-title">${title}</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" onclick="minimizeWindow('${id}')">&#8212;</button>
+        <button class="win-btn win-max" onclick="maximizeWindow('${id}')">&#9633;</button>
+        <button class="win-btn win-close" onclick="closeWindow('${id}')">&#10005;</button>
+      </div>
+    </div>
+    <div class="window-body" id="${id}_body">${content}</div>
+  `;
+
+  document.getElementById('desktop-area').appendChild(el);
+  el.addEventListener('pointerdown', () => focusWindow(id));
+
+  // Init app-specific content
+  if (appId === 'synthia') initSynthia(id + '_body');
+  if (appId === 'browser') initBrowser(id + '_body');
+  if (appId === 'ingest') initIngestor(id + '_body');
+  if (appId === 'files') initFileManager(id + '_body');
+  if (appId === 'settings') initSettings(id + '_body');
+  if (appId === 'appcenter') initAppCenter(id + '_body');
+
+  return win;
+}
+
+function closeWindow(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  OS.windows = OS.windows.filter(w => w.id !== id);
+}
+function minimizeWindow(id) {
+  const el = document.getElementById(id);
+  const win = OS.windows.find(w => w.id === id);
+  if (!win || !el) return;
+  win.minimized = !win.minimized;
+  if (win.minimized) {
+    el.classList.add('minimized');
+    setTimeout(() => el.style.display = 'none', 200);
+  } else {
+    el.style.display = 'flex';
+    setTimeout(() => el.classList.remove('minimized'), 10);
+  }
+}
+function maximizeWindow(id) {
+  const el = document.getElementById(id);
+  const win = OS.windows.find(w => w.id === id);
+  if (!win || !el) return;
+  win.maximized = !win.maximized;
+  if (win.maximized) {
+    el.classList.add('maximized');
+  } else {
+    el.classList.remove('maximized');
+    el.style.left = win.x + 'px';
+    el.style.top = win.y + 'px';
+  }
+}
+function focusWindow(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.zIndex = ++OS.zIndex;
+  const win = OS.windows.find(w => w.id === id);
+  if (win && win.minimized) minimizeWindow(id);
+}
+function startDrag(e, id) {
+  if (e.button !== undefined && e.button !== 0) return;
+  const win = OS.windows.find(w => w.id === id);
+  const el = document.getElementById(id);
+  if (!win || !el || win.maximized) return;
+  if (e.target.closest('.window-controls')) return;
+
+  e.preventDefault();
+  focusWindow(id);
+  OS.dragWindow = id;
+  OS.dragPointerId = e.pointerId;
+  const rect = el.getBoundingClientRect();
+  OS.dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+
+  if (el.setPointerCapture && e.pointerId !== undefined) {
+    try { el.setPointerCapture(e.pointerId); } catch (_) {}
+  }
+  document.addEventListener('pointermove', onDrag, { passive: false });
+  document.addEventListener('pointerup', stopDrag);
+  document.addEventListener('pointercancel', stopDrag);
+}
+function onDrag(e) {
+  if (!OS.dragWindow) return;
+  if (OS.dragPointerId !== undefined && e.pointerId !== undefined && e.pointerId !== OS.dragPointerId) return;
+  e.preventDefault();
+
+  const el = document.getElementById(OS.dragWindow);
+  if (!el) return;
+  const desktop = document.getElementById('desktop-area');
+  const area = desktop ? desktop.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+  const rect = el.getBoundingClientRect();
+  const maxX = Math.max(0, area.width - Math.min(rect.width, area.width * 0.92));
+  const maxY = Math.max(40, window.innerHeight - rect.height - 64);
+  const x = Math.min(Math.max(0, e.clientX - OS.dragOffset.x), maxX);
+  const y = Math.min(Math.max(40, e.clientY - OS.dragOffset.y), maxY);
+
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+  const win = OS.windows.find(w => w.id === OS.dragWindow);
+  if (win) { win.x = x; win.y = y; }
+}
+function stopDrag(e) {
+  if (OS.dragWindow) {
+    const el = document.getElementById(OS.dragWindow);
+    if (el && el.releasePointerCapture && e && e.pointerId !== undefined) {
+      try { el.releasePointerCapture(e.pointerId); } catch (_) {}
+    }
+  }
+  OS.dragWindow = null;
+  OS.dragPointerId = null;
+  document.removeEventListener('pointermove', onDrag);
+  document.removeEventListener('pointerup', stopDrag);
+  document.removeEventListener('pointercancel', stopDrag);
+}
+
+// ==================== APP OPENERS ====================
+function openSynthia() {
+  const content = `
+    <div style="height:100%;display:flex;flex-direction:column;">
+      <div class="chat-messages" id="synthia-messages"></div>
+      <div class="chat-input-area">
+        <textarea class="chat-textarea" id="synthia-input" placeholder="Ask Synthia..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendSynthiaMessage();}" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+        <button class="chat-send-btn" onclick="sendSynthiaMessage()">&#10148;</button>
+      </div>
+    </div>
+  `;
+  createWindow('synthia', 'Synthia AI', content, { width: 500, height: 450 });
+}
+function openBrowser() {
+  const content = `
+    <div style="height:100%;display:flex;flex-direction:column;">
+      <div class="browser-bar">
+        <div class="browser-nav">
+          <button class="browser-btn" onclick="browserBack()">&#9664;</button>
+          <button class="browser-btn" onclick="browserForward()">&#9654;</button>
+          <button class="browser-btn" onclick="browserRefresh()">&#8635;</button>
+        </div>
+        <input type="text" class="browser-url" id="browser-url" value="https://example.com" onkeydown="if(event.key==='Enter')browserNavigate()">
+        <button class="browser-btn" onclick="browserNavigate()">&#10148;</button>
+      </div>
+      <iframe class="browser-frame" id="browser-frame" src="about:blank"></iframe>
+    </div>
+  `;
+  createWindow('browser', 'Morph Browser', content, { width: 700, height: 500 });
+}
+function openIngestor() {
+  const content = `
+    <div style="height:100%;display:flex;flex-direction:column;padding:16px;gap:12px;overflow:auto;">
+      <div class="ingest-dropzone" id="ingest-zone" ondragover="ingestDragOver(event)" ondragleave="ingestDragLeave(event)" ondrop="ingestDrop(event)" onclick="document.getElementById('ingest-input').click()">
+        <div class="ingest-dropzone-icon">&#128229;</div>
+        <div class="ingest-dropzone-text">Drop files here or click to browse</div>
+        <div class="ingest-dropzone-hint">Supports: ZIP, JS, HTML, CSS, JSON, Images, Documents, Code</div>
+      </div>
+      <input type="file" id="ingest-input" style="display:none" multiple onchange="ingestFiles(event)" accept="*/*">
+      <div id="ingest-results"></div>
+    </div>
+  `;
+  createWindow('ingest', 'File Ingestor', content, { width: 550, height: 500 });
+}
+function openFileManager() {
+  const content = `
+    <div style="height:100%;padding:14px;overflow:auto;">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="btn primary" onclick="document.getElementById('fm-input').click()">+ Add Files</button>
+        <button class="btn" onclick="clearFiles()">Clear All</button>
+      </div>
+      <input type="file" id="fm-input" style="display:none" multiple onchange="fmAddFiles(event)">
+      <div id="fm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px;"></div>
+    </div>
+  `;
+  createWindow('files', 'File Manager', content, { width: 500, height: 400 });
+}
+function openSettings() {
+  const content = `
+    <div style="height:100%;padding:16px;">
+      <h3 style="font-size:14px;color:var(--accent-3);margin-bottom:12px;">System Settings</h3>
+      <div style="display:grid;gap:10px;">
+        <div class="analyzer-section">
+          <h3>Appearance</h3>
+          <p>Theme: Dark (Purple/Teal)</p>
+          <p>Animations: ${OS.settings.animations ? 'On' : 'Off'}</p>
+        </div>
+        <div class="analyzer-section">
+          <h3>Storage</h3>
+          <p>Files: ${OS.files.length}</p>
+          <p>Knowledge: ${OS.knowledge.length} items</p>
+          <p>Sandbox: ${OS.sandbox.length} items</p>
+        </div>
+        <div class="analyzer-section">
+          <h3>System</h3>
+          <p>Version: SYNTH OS v1.0</p>
+          <p>Engine: Synthia AI</p>
+        </div>
+      </div>
+    </div>
+  `;
+  createWindow('settings', 'Settings', content, { width: 400, height: 350 });
+}
+function openAppCenter() {
+  const content = `
+    <div style="height:100%;padding:16px;overflow:auto;">
+      <h3 style="font-size:14px;color:var(--accent-3);margin-bottom:12px;">App Center</h3>
+      <div class="app-center" id="app-center-grid"></div>
+    </div>
+  `;
+  createWindow('appcenter', 'App Center', content, { width: 600, height: 450 });
+}
+
+// ==================== BROWSER ====================
+let browserHistory = [], browserPos = -1;
+function browserNavigate() {
+  const urlInput = document.getElementById('browser-url');
+  const frame = document.getElementById('browser-frame');
+  if (!urlInput || !frame) return;
+  let url = urlInput.value.trim();
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url) && url !== 'about:blank') url = 'https://' + url;
+  urlInput.value = url;
+  frame.src = url;
+  browserHistory = browserHistory.slice(0, browserPos + 1);
+  browserHistory.push(url); browserPos++;
+}
+function browserBack() { if (browserPos > 0) { browserPos--; document.getElementById('browser-frame').src = browserHistory[browserPos]; document.getElementById('browser-url').value = browserHistory[browserPos]; } }
+function browserForward() { if (browserPos < browserHistory.length - 1) { browserPos++; document.getElementById('browser-frame').src = browserHistory[browserPos]; document.getElementById('browser-url').value = browserHistory[browserPos]; } }
+function browserRefresh() { document.getElementById('browser-frame').src = document.getElementById('browser-frame').src; }
+
+// ==================== FILE INGESTOR ====================
+function ingestDragOver(e) { e.preventDefault(); e.currentTarget.classList.add('dragover'); }
+function ingestDragLeave(e) { e.currentTarget.classList.remove('dragover'); }
+function ingestDrop(e) {
+  e.preventDefault(); e.currentTarget.classList.remove('dragover');
+  const files = Array.from(e.dataTransfer.files);
+  processIngestedFiles(files);
+}
+function ingestFiles(e) { processIngestedFiles(Array.from(e.target.files)); }
+
+async function processIngestedFiles(files) {
+  const results = document.getElementById('ingest-results');
+  results.innerHTML = '<div style="text-align:center;padding:20px;"><div style="width:20px;height:20px;border:2px solid var(--accent-2);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;display:inline-block;"></div><p style="color:var(--text-2);margin-top:10px;">Analyzing ' + files.length + ' files...</p></div>';
+
+  for (const file of files) {
+    const analysis = await analyzeFile(file);
+    OS.files.push(analysis);
+    addToTray(analysis);
+
+    const div = document.createElement('div');
+    div.className = 'analyzer-result';
+    div.innerHTML = `
+      <div class="analyzer-section">
+        <h3>${analysis.icon} ${analysis.name}</h3>
+        <p><strong>Type:</strong> ${analysis.type} | <strong>Size:</strong> ${formatBytes(analysis.size)}</p>
+        <p><strong>Purpose:</strong> ${analysis.purpose}</p>
+        <p><strong>Structure:</strong> ${analysis.structure}</p>
+        <div class="analyzer-meta">
+          ${analysis.tags.map(t => '<span class="analyzer-tag">' + t + '</span>').join('')}
+        </div>
+      </div>
+    `;
+    results.appendChild(div);
+  }
+
+  saveOS();
+  updateAppBadge();
+  showToast('Ingested ' + files.length + ' files to tray');
+}
+
+async function analyzeFile(file) {
+  const name = file.name;
+  const ext = name.split('.').pop().toLowerCase();
+  const size = file.size;
+  let type = 'unknown', purpose = 'General file', structure = 'Binary data', tags = ['file'], icon = '&#128196;';
+
+  // Detect type
+  if (['js','ts','jsx','tsx'].includes(ext)) { type = 'code'; purpose = 'JavaScript/TypeScript module'; structure = 'Functions, classes, exports'; tags = ['code','js','module']; icon = '&#128220;'; }
+  else if (['html','htm'].includes(ext)) { type = 'web'; purpose = 'Web page or component'; structure = 'DOM structure, scripts, styles'; tags = ['web','html','frontend']; icon = '&#127760;'; }
+  else if (['css','scss','sass','less'].includes(ext)) { type = 'style'; purpose = 'Styling rules'; structure = 'Selectors, properties, media queries'; tags = ['css','style','design']; icon = '&#127912;'; }
+  else if (['json'].includes(ext)) { type = 'data'; purpose = 'Structured data'; structure = 'Key-value pairs, arrays'; tags = ['data','json','config']; icon = '&#128203;'; }
+  else if (['py'].includes(ext)) { type = 'code'; purpose = 'Python script or module'; structure = 'Functions, classes, imports'; tags = ['code','python','backend']; icon = '&#128013;'; }
+  else if (['md','txt','rtf'].includes(ext)) { type = 'doc'; purpose = 'Document or text'; structure = 'Paragraphs, headings, formatting'; tags = ['doc','text','content']; icon = '&#128221;'; }
+  else if (['zip','tar','gz','rar','7z'].includes(ext)) { type = 'archive'; purpose = 'Compressed archive'; structure = 'Multiple files bundled'; tags = ['archive','zip','bundle']; icon = '&#128230;'; }
+  else if (['png','jpg','jpeg','gif','svg','webp','bmp'].includes(ext)) { type = 'image'; purpose = 'Image asset'; structure = 'Pixels, layers, metadata'; tags = ['image','asset','media']; icon = '&#127912;'; }
+  else if (['mp4','webm','mov','avi','mkv'].includes(ext)) { type = 'video'; purpose = 'Video media'; structure = 'Frames, audio tracks, metadata'; tags = ['video','media','asset']; icon = '&#127909;'; }
+  else if (['mp3','wav','ogg','flac','aac'].includes(ext)) { type = 'audio'; purpose = 'Audio media'; structure = 'Samples, metadata, tags'; tags = ['audio','media','sound']; icon = '&#127925;'; }
+  else if (['pdf','doc','docx','xls','xlsx','ppt','pptx'].includes(ext)) { type = 'doc'; purpose = 'Document file'; structure = 'Pages, sections, formatting'; tags = ['doc','office','content']; icon = '&#128196;'; }
+  else if (['sql','db','sqlite'].includes(ext)) { type = 'data'; purpose = 'Database file'; structure = 'Tables, rows, schema'; tags = ['data','db','sql']; icon = '&#128187;'; }
+  else if (['dockerfile','yaml','yml','xml','toml','ini','cfg'].includes(ext)) { type = 'config'; purpose = 'Configuration file'; structure = 'Settings, parameters, rules'; tags = ['config','system','setup']; icon = '&#9881;'; }
+
+  // Try to read content for deeper analysis
+  let content = '';
+  try {
+    if (file.type.startsWith('text/') || ['js','html','css','json','md','py','txt','xml','yaml','sql'].includes(ext)) {
+      content = await readFileText(file);
+      // Extract more insights
+      if (content.includes('function') || content.includes('class')) { structure = 'Functions: ' + (content.match(/function/g) || []).length + ', Classes: ' + (content.match(/class/g) || []).length; }
+      if (content.includes('import') || content.includes('require')) { tags.push('module'); }
+      if (content.includes('export')) { tags.push('export'); }
+      if (content.includes('react') || content.includes('useState')) { purpose = 'React component'; tags.push('react'); }
+      if (content.includes('useEffect') || content.includes('useState')) { tags.push('hooks'); }
+      if (content.includes('api') || content.includes('fetch') || content.includes('axios')) { purpose = 'API integration'; tags.push('api'); }
+      if (content.includes('test') || content.includes('describe') || content.includes('it(')) { purpose = 'Test suite'; tags.push('test'); }
+    }
+  } catch(e) {}
+
+  // Handle ZIP files
+  if (ext === 'zip') {
+    try {
+      const zipContent = await readFileArrayBuffer(file);
+      const entries = detectZipEntries(zipContent);
+      structure = 'ZIP archive with ' + entries.length + ' entries: ' + entries.slice(0, 5).join(', ');
+      tags.push('zip');
+      for (const entry of entries.slice(0, 3)) {
+        tags.push(entry.split('.').pop());
+      }
+    } catch(e) { structure = 'ZIP archive (analysis limited)'; }
+  }
+
+  return { id: 'file_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5), name, type, size, purpose, structure, tags, icon, content, timestamp: Date.now() };
+}
+
+function detectZipEntries(buffer) {
+  const entries = [];
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < view.length - 30; i++) {
+    if (view[i] === 0x50 && view[i+1] === 0x4B && view[i+2] === 0x03 && view[i+3] === 0x04) {
+      const nameLen = view[i+26] | (view[i+27] << 8);
+      let name = '';
+      for (let j = 0; j < nameLen; j++) name += String.fromCharCode(view[i+30+j]);
+      if (name && !name.endsWith('/')) entries.push(name);
+    }
+  }
+  return entries;
+}
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file);
+  });
+}
+function readFileArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function addToTray(file) {
+  if (!OS.tray.find(t => t.id === file.id)) {
+    OS.tray.push(file);
+    updateDesktopIcons();
+  }
+}
+function updateDesktopIcons() {
+  const grid = document.getElementById('desktop-grid');
+  if (!grid) return;
+  const defaultCount = 6;
+  while (grid.children.length > defaultCount) {
+    grid.removeChild(grid.lastChild);
+  }
+  OS.tray.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'desktop-icon';
+    div.onclick = () => openTrayItem(item);
+    div.innerHTML = '<div class="desktop-icon-icon">' + item.icon + '</div><div class="desktop-icon-label">' + item.name + '</div>';
+    grid.appendChild(div);
+  });
+}
+function openTrayItem(item) {
+  if (item.type === 'web' || item.name.endsWith('.html')) {
+    openBrowser();
+    setTimeout(() => {
+      const frame = document.querySelector('.browser-frame');
+      if (frame && item.content) frame.srcdoc = item.content;
+    }, 500);
+  } else if (item.type === 'code') {
+    showOverlay('File: ' + item.name, '<pre style="white-space:pre-wrap;word-break:break-all;font-size:11px;max-height:60vh;overflow:auto;"><code>' + escapeHtml(item.content || '// Binary file') + '</code></pre>', '<button class="btn" onclick="closeOverlay()">Close</button><button class="btn primary" onclick="addToSandboxFromTray(\'' + item.id + '\')">Add to Sandbox</button>');
+  } else {
+    showOverlay('File: ' + item.name, '<div class="analyzer-section"><p><strong>Type:</strong> ' + item.type + '</p><p><strong>Purpose:</strong> ' + item.purpose + '</p><p><strong>Structure:</strong> ' + item.structure + '</p><div class="analyzer-meta">' + item.tags.map(t => '<span class="analyzer-tag">' + t + '</span>').join('') + '</div></div>', '<button class="btn" onclick="closeOverlay()">Close</button>');
+  }
+}
+function addToSandboxFromTray(id) {
+  const item = OS.tray.find(t => t.id === id);
+  if (!item) return;
+  OS.sandbox.push({ id: item.id, name: item.name, content: item.content || '', type: 'text/plain', icon: item.icon, timestamp: Date.now() });
+  saveOS();
+  closeOverlay();
+  showToast('Added to sandbox');
+}
+
+
+function initBrowser(bodyId) {
+  const container = document.getElementById(bodyId);
+  if (!container) return;
+  const frame = container.querySelector('.browser-frame');
+  const url = container.querySelector('.browser-url');
+  if (frame && url && frame.src === 'about:blank') {
+    frame.srcdoc = '<!doctype html><html><body style="font-family:-apple-system,sans-serif;background:#fff;color:#222;padding:24px"><h2>Morph Browser</h2><p>Enter a URL above and press Enter. Some sites block iframe loading, because the web enjoys tiny locked doors.</p></body></html>';
+  }
+}
+function initIngestor(bodyId) {
+  const container = document.getElementById(bodyId);
+  if (!container) return;
+  const results = container.querySelector('#ingest-results');
+  if (results && !results.innerHTML.trim()) {
+    results.innerHTML = '<div class="analyzer-section"><h3>Ready</h3><p>Drop files above to analyze and add them to the desktop tray.</p></div>';
+  }
+}
+function initSettings(bodyId) {
+  const container = document.getElementById(bodyId);
+  if (!container) return;
+}
+
+// ==================== SYNTHIA CHAT ENGINE ====================
+function initSynthia(bodyId) {
+  const container = document.getElementById(bodyId);
+  if (!container) return;
+  const msgs = container.querySelector('.chat-messages');
+
+  // Load history
+  OS.messages.forEach(msg => appendSynthiaMsg(msg, msgs, false));
+
+  // Welcome if empty
+  if (OS.messages.length === 0) {
+    const welcome = {
+      id: 'msg_' + Date.now(), role: 'ai', persona: 'Synthia',
+      content: 'Welcome to SYNTH OS. I am Synthia, your autonomous AI orchestrator.\\n\\nI can:\\n- Build apps and games\\n- Research and analyze files\\n- Deploy to the web\\n- Track your earnings\\n- Control your phone via MCP\\n\\nTry: "build a game" or drop files in the Ingestor.',
+      timestamp: Date.now()
+    };
+    OS.messages.push(welcome);
+    appendSynthiaMsg(welcome, msgs);
+    saveOS();
+  }
+}
+
+function appendSynthiaMsg(msg, container, scroll) {
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + msg.role;
+  const time = new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  let content = msg.content;
+  content = content.replace(/```(\w+)?\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+  content = content.replace(/`([^`]+)`/g, '<code>$1</code>');
+  content = content.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:var(--accent-3);">$1</a>');
+  div.innerHTML = '<div class="chat-msg-header"><span>' + (msg.role === 'user' ? 'You' : msg.persona || 'Synthia') + '</span><span class="chat-msg-time">' + time + '</span></div><div>' + content + '</div>';
+  container.appendChild(div);
+  if (scroll !== false) container.scrollTop = container.scrollHeight;
+}
+
+async function sendSynthiaMessage() {
+  const input = document.getElementById('synthia-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  const msgs = document.getElementById('synthia-messages');
+  const userMsg = { id: 'msg_' + Date.now(), role: 'user', content: text, timestamp: Date.now() };
+  OS.messages.push(userMsg);
+  appendSynthiaMsg(userMsg, msgs);
+  input.value = ''; input.style.height = '36px';
+  saveOS();
+
+  // Show typing
+  const typing = document.createElement('div');
+  typing.className = 'chat-msg ai';
+  typing.id = 'synthia-typing';
+  typing.innerHTML = '<div class="chat-msg-header"><span>Synthia</span></div><div style="display:flex;gap:3px;"><div style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:bounce 1.4s infinite;"></div><div style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:bounce 1.4s infinite 0.2s;"></div><div style="width:5px;height:5px;background:var(--accent);border-radius:50%;animation:bounce 1.4s infinite 0.4s;"></div></div>';
+  msgs.appendChild(typing); msgs.scrollTop = msgs.scrollHeight;
+
+  // Process
+  const response = await processSynthiaMessage(text);
+
+  typing.remove();
+  const aiMsg = { id: 'msg_' + Date.now(), role: 'ai', content: response.text, persona: response.persona, timestamp: Date.now() };
+  OS.messages.push(aiMsg);
+  appendSynthiaMsg(aiMsg, msgs);
+  saveOS();
+
+  if (response.actions) response.actions.forEach(a => executeSynthiaAction(a));
+}
+
+async function processSynthiaMessage(text) {
+  const lower = text.toLowerCase();
+  let persona = 'Synthia', responseText = '', actions = [];
+
+  if (lower.includes('build') || lower.includes('create') || lower.includes('make')) {
+    persona = 'Developer';
+    const gen = generateSynthiaCode(text);
+    if (gen) {
+      responseText = 'Built ' + gen.name + ' and added to sandbox.\\n\\nPreview it in the File Manager or download from the tray.';
+      actions.push({ type: 'add_sandbox', data: { name: gen.name, content: gen.code, type: 'text/html' } });
+    } else {
+      responseText = 'I can build games, apps, and PWAs. Try "build a game" or "create an app".';
+    }
+  } else if (lower.includes('open') || lower.includes('launch')) {
+    if (lower.includes('browser')) { actions.push({ type: 'open_app', data: 'browser' }); responseText = 'Opening Browser...'; }
+    else if (lower.includes('terminal')) { actions.push({ type: 'open_app', data: 'terminal' }); responseText = 'Opening Terminal...'; }
+    else if (lower.includes('file') || lower.includes('manager')) { actions.push({ type: 'open_app', data: 'files' }); responseText = 'Opening File Manager...'; }
+    else if (lower.includes('app') || lower.includes('center')) { actions.push({ type: 'open_app', data: 'appcenter' }); responseText = 'Opening App Center...'; }
+    else responseText = 'I can open Browser, Terminal, Files, or App Center. Which one?';
+  } else if (lower.includes('ingest') || lower.includes('analyze') || lower.includes('file')) {
+    persona = 'Analyst';
+    responseText = 'Drop files in the Ingestor or File Manager. I analyze all types: ZIP, code, images, documents, databases, configs.';
+    actions.push({ type: 'open_app', data: 'ingest' });
+  } else if (lower.includes('deploy')) {
+    persona = 'Deployer';
+    responseText = 'I can deploy to Netlify (ZIP), GitHub Pages, Render, or mobile via MCP.\\n\\nUse the terminal: deploy <target>';
+  } else if (lower.includes('money') || lower.includes('earn')) {
+    persona = 'Advisor';
+    responseText = 'Earnings: $' + OS.earnings.total.toFixed(2) + '\\n\\nStreams: Apps, Templates, Automation, Digital Products';
+  } else if (lower.includes('mcp') || lower.includes('phone') || lower.includes('mobile')) {
+    persona = 'MCP Connector';
+    responseText = 'MCP Mobile ready.\\n\\nRun: npx -y @mobilenext/mobile-mcp@latest\\nThen use the terminal: mcp';
+  } else if (lower.includes('help') || lower.includes('what')) {
+    responseText = '**SYNTH OS Commands:**\\n- "build a game" — Create apps\\n- "open browser" — Launch apps\\n- "analyze files" — Ingest & analyze\\n- "deploy netlify" — Deploy\\n- Terminal: type `help` for full commands';
+  } else {
+    responseText = 'I understand. With ' + OS.knowledge.length + ' knowledge items and ' + OS.sandbox.length + ' sandbox projects, I am working on your goals.\\n\\nTry "help" for what I can do.';
+  }
+
+  return { text: responseText, persona, actions };
+}
+
+function generateSynthiaCode(prompt) {
+  const lower = prompt.toLowerCase();
+  if (lower.includes('game')) {
+    return { name: 'game_' + Date.now() + '.html', code: '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Game</title><style>body{margin:0;overflow:hidden;background:#0a0014;display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif}canvas{border:2px solid #b829f7;border-radius:8px;box-shadow:0 0 20px rgba(184,41,247,0.4)}#ui{position:absolute;top:10px;left:10px;color:#00f0d0;font-size:14px}</style></head><body><div id="ui">Score: <span id="score">0</span></div><canvas id="c"></canvas><script>const c=document.getElementById("c"),x=c.getContext("2d");c.width=800;c.height=600;let score=0,px=400,py=300;function loop(){x.fillStyle="#0a0014";x.fillRect(0,0,c.width,c.height);x.fillStyle="#00f0d0";x.beginPath();x.arc(px,py,10,0,Math.PI*2);x.fill();px=(px+2)%c.width;py=(py+1)%c.height;document.getElementById("score").textContent=++score;requestAnimationFrame(loop);}loop();<\/script></body></html>' };
+  }
+  if (lower.includes('app') || lower.includes('pwa')) {
+    return { name: 'app_' + Date.now() + '.html', code: '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>App</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,sans-serif;background:#0a0014;color:#f0e8ff;height:100vh;display:flex;flex-direction:column}.header{padding:16px;background:#140a25;border-bottom:1px solid #3d2060}.content{flex:1;padding:20px;overflow-y:auto}.card{background:#1e1035;border:1px solid #3d2060;border-radius:12px;padding:16px;margin-bottom:12px}.btn{background:linear-gradient(135deg,#b829f7,#00f0d0);color:white;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-weight:600;box-shadow:0 4px 15px rgba(184,41,247,0.4)}</style></head><body><div class="header"><h2>My App</h2></div><div class="content"><div class="card"><h3>Welcome</h3><p>Generated by SYNTH OS.</p></div><button class="btn" onclick="alert(\'Working!\')">Click Me</button></div></body></html>' };
+  }
+  return null;
+}
+
+function executeSynthiaAction(action) {
+  switch(action.type) {
+    case 'add_sandbox':
+      OS.sandbox.push({ id: 'sb_' + Date.now(), name: action.data.name, content: action.data.content, type: action.data.type, icon: '&#127760;', timestamp: Date.now() });
+      saveOS(); showToast('Added to sandbox'); break;
+    case 'open_app':
+      if (action.data === 'browser') openBrowser();
+      if (action.data === 'terminal') toggleTerminal();
+      if (action.data === 'files') openFileManager();
+      if (action.data === 'appcenter') openAppCenter();
+      if (action.data === 'ingest') openIngestor();
+      break;
+  }
+}
+
+// ==================== TERMINAL ====================
+function toggleTerminal() {
+  const panel = document.getElementById('terminal-panel');
+  const btn = document.getElementById('term-toggle');
+  OS.terminalOpen = !OS.terminalOpen;
+  if (!panel) return;
+  if (OS.terminalOpen) {
+    panel.classList.add('open');
+    if (btn) { btn.classList.add('active'); btn.innerHTML = '<span>&#128187;</span> Terminal ON'; }
+    setTimeout(() => { const input = document.getElementById('terminal-input'); if (input) input.focus(); }, 100);
+  } else {
+    panel.classList.remove('open');
+    if (btn) { btn.classList.remove('active'); btn.innerHTML = '<span>&#128187;</span> Terminal'; }
+  }
+}
+function clearTerminal() {
+  document.getElementById('terminal-body').innerHTML = '';
+  appendTermLine('success', 'Terminal cleared. Type help.');
+}
+function appendTermLine(type, text) {
+  const body = document.getElementById('terminal-body');
+  const div = document.createElement('div');
+  div.className = 'terminal-line terminal-' + type;
+  div.textContent = text;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+}
+function handleTerminalKey(e) {
+  if (e.key === 'Enter') {
+    const input = document.getElementById('terminal-input');
+    const cmd = input.value.trim();
+    if (!cmd) return;
+    appendTermLine('command', '$ ' + cmd);
+    execTermCmd(cmd);
+    input.value = '';
+  }
+}
+function execTermCmd(cmd) {
+  const parts = cmd.split(' ');
+  const c = parts[0].toLowerCase();
+  const args = parts.slice(1);
+  switch(c) {
+    case 'help':
+      appendTermLine('success', '=== MorphOS Terminal ===');
+      ['build <name>  - Build app/game','ls            - List tray','apps          - List apps','open <app>    - Open app (synthia/browser/files/ingest/settings)','deploy <t>    - Deploy (netlify/github/render/mobile)','mcp           - Toggle MCP','status        - System status','clear         - Clear terminal','whoami        - Session info'].forEach(l => appendTermLine('output', '  ' + l));
+      break;
+    case 'build':
+      const gen = generateSynthiaCode(args.join(' ') || 'app');
+      if (gen) { OS.sandbox.push({ id:'sb_'+Date.now(), name:gen.name, content:gen.code, type:'text/html', icon:'&#127760;', timestamp:Date.now() }); saveOS(); appendTermLine('success', 'Built ' + gen.name); }
+      else appendTermLine('error', 'Try: build game, build app');
+      break;
+    case 'ls':
+      if (OS.tray.length === 0) appendTermLine('output', 'Tray empty');
+      else { appendTermLine('success', 'Tray (' + OS.tray.length + '):'); OS.tray.forEach((t,i) => appendTermLine('output', '  [' + i + '] ' + t.name + ' (' + t.type + ')')); }
+      break;
+    case 'apps':
+      appendTermLine('success', 'Apps:');
+      OS.apps.forEach(a => appendTermLine('output', '  ' + a.icon + ' ' + a.name + ' - ' + a.desc));
+      break;
+    case 'open':
+      const app = args[0];
+      if (app === 'synthia') openSynthia();
+      else if (app === 'browser') openBrowser();
+      else if (app === 'files') openFileManager();
+      else if (app === 'ingest') openIngestor();
+      else if (app === 'settings') openSettings();
+      else appendTermLine('error', 'Unknown app: ' + app);
+      break;
+    case 'deploy':
+      appendTermLine('success', 'Deploy to ' + (args[0] || 'netlify') + '...');
+      break;
+    case 'mcp':
+      appendTermLine('success', 'MCP: toggled');
+      break;
+    case 'status':
+      appendTermLine('success', 'SYNTH OS Status:');
+      appendTermLine('output', '  Tray: ' + OS.tray.length);
+      appendTermLine('output', '  Sandbox: ' + OS.sandbox.length);
+      appendTermLine('output', '  Knowledge: ' + OS.knowledge.length);
+      appendTermLine('output', '  Earnings: $' + OS.earnings.total.toFixed(2));
+      break;
+    case 'whoami':
+      appendTermLine('success', 'SYNTH OS User');
+      appendTermLine('output', '  Files: ' + OS.files.length);
+      appendTermLine('output', '  Goals: ' + OS.goals.length);
+      break;
+    case 'clear': clearTerminal(); break;
+    default:
+      appendTermLine('error', 'Unknown: ' + c);
+      appendTermLine('output', 'Type "help" for commands');
+  }
+}
+
+// ==================== APP CENTER ====================
+function initAppCenter(bodyId) {
+  const grid = document.getElementById('app-center-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  OS.apps.forEach(app => {
+    const tile = document.createElement('div');
+    tile.className = 'app-tile';
+    tile.onclick = () => {
+      if (app.id === 'synthia') openSynthia();
+      else if (app.id === 'browser') openBrowser();
+      else if (app.id === 'files') openFileManager();
+      else if (app.id === 'ingest') openIngestor();
+      else if (app.id === 'settings') openSettings();
+      else if (app.id === 'terminal') toggleTerminal();
+    };
+    tile.innerHTML = '<div class="app-tile-icon">' + app.icon + '</div><div class="app-tile-name">' + app.name + '</div><div class="app-tile-desc">' + app.desc + '</div>';
+    grid.appendChild(tile);
+  });
+
+  // Add tray items as apps too
+  OS.tray.forEach(item => {
+    const tile = document.createElement('div');
+    tile.className = 'app-tile';
+    tile.onclick = () => openTrayItem(item);
+    tile.innerHTML = '<div class="app-tile-icon">' + item.icon + '</div><div class="app-tile-name">' + item.name + '</div><div class="app-tile-desc">' + item.type + ' | ' + formatBytes(item.size) + '</div>';
+    grid.appendChild(tile);
+  });
+}
+
+// ==================== FILE MANAGER ====================
+function initFileManager(bodyId) {
+  renderFM();
+}
+function fmAddFiles(e) {
+  processIngestedFiles(Array.from(e.target.files));
+  setTimeout(renderFM, 1000);
+}
+function renderFM() {
+  const grid = document.getElementById('fm-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  OS.files.forEach(file => {
+    const div = document.createElement('div');
+    div.className = 'file-card';
+    div.style.cssText = 'background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px;cursor:pointer;text-align:center;';
+    div.onclick = () => openTrayItem(file);
+    div.innerHTML = '<div style="font-size:24px;margin-bottom:4px;">' + file.icon + '</div><div style="font-size:10px;font-weight:600;overflow:hidden;text-overflow:ellipsis;">' + file.name + '</div><div style="font-size:9px;color:var(--text-3);">' + formatBytes(file.size) + '</div>';
+    grid.appendChild(div);
+  });
+}
+function clearFiles() {
+  OS.files = []; OS.tray = [];
+  saveOS();
+  updateDesktopIcons();
+  renderFM();
+  showToast('All files cleared');
+}
+
+// ==================== UTILS ====================
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+function showToast(msg) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+function showOverlay(title, body, footer) {
+  document.getElementById('overlay-title').textContent = title;
+  document.getElementById('overlay-body').innerHTML = body;
+  document.getElementById('overlay-footer').innerHTML = footer || '<button class="btn primary" onclick="closeOverlay()">Close</button>';
+  document.getElementById('overlay').classList.add('active');
+}
+function closeOverlay(e) {
+  if (!e || e.target.id === 'overlay') document.getElementById('overlay').classList.remove('active');
+}
+function updateAppBadge() {
+  const badge = document.getElementById('app-badge');
+  if (badge) badge.textContent = OS.tray.length;
+}
+
+// ==================== CONTEXT MENU ====================
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.closest('.desktop-icon')) {
+    e.preventDefault();
+    OS.ctxTarget = e.target.closest('.desktop-icon');
+    const menu = document.getElementById('ctx-menu');
+    menu.style.display = 'block';
+    menu.style.left = e.pageX + 'px';
+    menu.style.top = e.pageY + 'px';
+  }
+});
+document.addEventListener('click', () => { document.getElementById('ctx-menu').style.display = 'none'; });
+function ctxOpen() { if (OS.ctxTarget) OS.ctxTarget.click(); }
+function ctxAnalyze() { showToast('Analyzing...'); }
+function ctxAddToTray() { showToast('Added to tray'); }
+function ctxRename() { showToast('Rename not implemented'); }
+function ctxDelete() { showToast('Delete not implemented'); }
+
+// ==================== CLOCK ====================
+function updateClock() {
+  const el = document.getElementById('clock');
+  if (el) el.textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+
+
+
+// ==================== PREMIUM SHELL OVERRIDES ====================
+function renderMinimizedRail() {
+  const rail = document.getElementById('minimized-rail');
+  if (!rail) return;
+  const minimized = OS.windows.filter(w => w.minimized);
+  if (!minimized.length) {
+    rail.innerHTML = '<span class="rail-empty">No minimized apps</span>';
+    return;
+  }
+  rail.innerHTML = minimized.map(w => {
+    const app = OS.apps.find(a => a.id === w.appId);
+    const icon = app?.icon || '&#128230;';
+    return '<button class="rail-pill" onclick="restoreWindow(\'' + w.id + '\')"><span>' + icon + '</span><span>' + escapeHtml(w.title || w.appId) + '</span></button>';
+  }).join('');
+}
+
+function setDockActive(appId) {
+  document.querySelectorAll('.premium-dock .dock-item').forEach(btn => btn.classList.remove('active'));
+  const map = { synthia:0, files:1, appcenter:2, browser:2, ingest:2, settings:2, terminal:2 };
+  const idx = map[appId];
+  const btns = document.querySelectorAll('.premium-dock .dock-item');
+  if (idx !== undefined && btns[idx]) btns[idx].classList.add('active');
+}
+
+function createWindow(appId, title, content, options) {
+  const app = OS.apps.find(a => a.id === appId);
+  const existing = OS.windows.find(w => w.appId === appId);
+  if (existing && !(options && options.multi)) {
+    restoreWindow(existing.id);
+    setDockActive(appId);
+    return existing;
+  }
+
+  const id = 'win_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+  const win = { id, appId, title, x: 0, y: 0, width: 0, height: 0, maximized: true, minimized: false };
+  OS.windows.push(win);
+
+  const el = document.createElement('div');
+  el.className = 'window maximized';
+  el.id = id;
+  el.style.zIndex = ++OS.zIndex;
+  el.innerHTML = `
+    <div class="window-header" onpointerdown="startDrag(event, '${id}')">
+      <span class="window-icon">${app?.icon || '&#128230;'}</span>
+      <span class="window-title">${title}</span>
+      <div class="window-controls">
+        <button class="win-btn win-min" onclick="minimizeWindow('${id}')" title="Minimize to top rail">&#8212;</button>
+        <button class="win-btn win-close" onclick="closeWindow('${id}')" title="Close">&#10005;</button>
+      </div>
+    </div>
+    <div class="window-body" id="${id}_body">${content}</div>
+  `;
+  document.getElementById('desktop-area').appendChild(el);
+  el.addEventListener('pointerdown', () => focusWindow(id));
+
+  if (appId === 'synthia') initSynthia(id + '_body');
+  if (appId === 'browser') initBrowser(id + '_body');
+  if (appId === 'ingest') initIngestor(id + '_body');
+  if (appId === 'files') initFileManager(id + '_body');
+  if (appId === 'settings') initSettings(id + '_body');
+  if (appId === 'appcenter') initAppCenter(id + '_body');
+  setDockActive(appId);
+  renderMinimizedRail();
+  return win;
+}
+
+function minimizeWindow(id) {
+  const el = document.getElementById(id);
+  const win = OS.windows.find(w => w.id === id);
+  if (!win || !el) return;
+  win.minimized = true;
+  el.classList.add('minimized');
+  renderMinimizedRail();
+}
+
+function restoreWindow(id) {
+  const el = document.getElementById(id);
+  const win = OS.windows.find(w => w.id === id);
+  if (!win || !el) return;
+  win.minimized = false;
+  el.style.display = 'flex';
+  el.classList.remove('minimized');
+  focusWindow(id);
+  setDockActive(win.appId);
+  renderMinimizedRail();
+}
+
+function maximizeWindow(id) { restoreWindow(id); }
+
+function closeWindow(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  OS.windows = OS.windows.filter(w => w.id !== id);
+  renderMinimizedRail();
+}
+
+function startDrag(e, id) {
+  // Fullscreen shell: windows do not move; titlebar stays touch-safe for controls.
+  if (e.target.closest('button')) return;
+  focusWindow(id);
+}
+function onDrag() {}
+function stopDrag() { OS.dragWindow = null; }
+
+function updateDesktopIcons() {
+  // In premium shell, files live in App Center / Files, not scattered on the wallpaper.
+  renderMinimizedRail();
+}
+
+// ==================== TOP BAR TOUCH BINDINGS ====================
+function bindTopButtons() {
+  const actions = {
+    terminal: toggleTerminal,
+    apps: openAppCenter,
+    browser: openBrowser,
+    ingest: openIngestor
+  };
+
+  document.querySelectorAll('[data-top-action]').forEach((btn) => {
+    if (btn.dataset.boundTopAction === 'true') return;
+    btn.dataset.boundTopAction = 'true';
+
+    const run = (event) => {
+      const type = event.type;
+      const now = Date.now();
+      if (type === 'click' && btn.dataset.lastPointerRun && now - Number(btn.dataset.lastPointerRun) < 450) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      if (type === 'pointerup') btn.dataset.lastPointerRun = String(now);
+
+      event.preventDefault();
+      event.stopPropagation();
+      const action = actions[btn.dataset.topAction];
+      if (typeof action === 'function') action();
+    };
+
+    btn.addEventListener('pointerup', run, { passive: false });
+    btn.addEventListener('click', run, { passive: false });
+  });
+}
+
+// ==================== INIT ====================
+bindTopButtons();
+loadOS();
+openSynthia();
+
+// Init terminal
+appendTermLine('success', 'SYNTH OS Terminal v1.0');
+appendTermLine('success', 'Type "help" for commands');
+
+// Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('data:text/javascript,' + encodeURIComponent('self.addEventListener(\'install\',e=>self.skipWaiting());self.addEventListener(\'activate\',e=>e.waitUntil(clients.claim()));self.addEventListener(\'fetch\',e=>e.respondWith(fetch(e.request).catch(()=>new Response(\'Offline\'))));')).catch(()=>{});
+}
+</script>
+</body>
+</html>
