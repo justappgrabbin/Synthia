@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>🏭 FOUNDRY + PAPER</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.1/lib/browser.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        :root {
+            --bg: #0a0a0c;
+            --surface: #1a1a2e;
+            --accent: #8B5CF6;
+            --text: #f5f5f5;
+            --dim: #999;
+            --success: #4ade80;
+            --glyph: #EC4899;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a0a0c 0%, #1a1a2e 50%, #0f0f14 100%);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            padding: 12px;
+            font-size: 16px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid rgba(139, 92, 246, 0.3);
+            margin-bottom: 16px;
+        }
+        
+        h1 {
+            background: linear-gradient(90deg, #8B5CF6, #EC4899, #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        
+        .subtitle { color: var(--dim); font-size: 0.75rem; line-height: 1.3; }
+        
+        .status-bar {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.ready { background: var(--success); box-shadow: 0 0 8px var(--success); animation: none; }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        
+        .panel {
+            background: var(--surface);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .panel h3 {
+            color: var(--accent);
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: var(--text);
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            resize: vertical;
+        }
+        
+        textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 8px rgba(139, 92, 246, 0.3); }
+        
+        button {
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            border: none;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            width: 100%;
+            margin-top: 12px;
+            touch-action: manipulation;
+        }
+        
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .tab-nav {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+        }
+        
+        .tab {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px 6px;
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            color: var(--dim);
+            cursor: pointer;
+            font-size: 0.7rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        
+        .tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .glyph-display {
+            background: rgba(236, 72, 153, 0.1);
+            border: 2px solid var(--glyph);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        
+        .glyph-label {
+            color: var(--glyph);
+            font-weight: 700;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        
+        .glyph-value {
+            color: var(--text);
+            font-weight: 600;
+            font-size: 1.5rem;
+        }
+        
+        .pressure-meter {
+            background: rgba(139, 92, 246, 0.1);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 16px 0;
+        }
+        
+        .pressure-bar {
+            height: 8px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .pressure-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ade80, #8B5CF6, #EC4899);
+            transition: width 0.5s ease;
+        }
+        
+        .pressure-label {
+            font-size: 0.75rem;
+            color: var(--dim);
+            text-align: center;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px 16px;
+            color: var(--dim);
+        }
+        
+        .spinner {
+            border: 3px solid rgba(139, 92, 246, 0.1);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .hint { font-size: 0.7rem; color: var(--dim); margin-top: 8px; line-height: 1.4; }
+        
+        iframe {
+            width: 100%;
+            height: 400px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 8px;
+            background: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏭 FOUNDRY + 📄 PAPER</h1>
+            <div class="subtitle">Causal Graphs → Living Apps</div>
+        </header>
+        
+        <div class="status-bar">
+            <div style="display: flex; align-items: center;">
+                <div class="status-dot" id="status-dot"></div>
+                <span id="status-text" style="font-size: 0.75rem;">Loading...</span>
+            </div>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <h3 style="margin-bottom: 8px; font-size: 1rem;">Initializing...</h3>
+            <p style="font-size: 0.75rem;">Loading Causal Engine + Paper Forge</p>
+        </div>
+        
+        <div id="content" style="display: none;">
+            <div class="tab-nav">
+                <button class="tab active" onclick="switchTab('input')">📝 Input</button>
+                <button class="tab" onclick="switchTab('graph')">🔗 Graph</button>
+                <button class="tab" onclick="switchTab('paper')">📄 Paper</button>
+            </div>
+            
+            <!-- Input Tab -->
+            <div id="tab-input" class="tab-content active">
+                <div class="panel">
+                    <h3>📝 Input Observations</h3>
+                    <textarea id="input-text" placeholder="Write your observations...
+
+Examples:
+Gate 6 causes conflict
+Line 4 provides triumph
+Being structures design
+
+OR describe an app:
+I want a gratitude journal
+I need a habit tracker
+Create a meditation timer"></textarea>
+                    
+                    <div class="hint">
+                        Write causality OR describe an app you want
+                    </div>
+                    
+                    <button onclick="processInput()">🔮 Process</button>
+                </div>
+            </div>
+            
+            <!-- Graph Tab -->
+            <div id="tab-graph" class="tab-content">
+                <div class="panel">
+                    <h3>🔗 Causal Graph</h3>
+                    <div id="graph-display"></div>
+                </div>
+            </div>
+            
+            <!-- Paper Tab -->
+            <div id="tab-paper" class="tab-content">
+                <div class="panel">
+                    <h3>📄 Generated Paper</h3>
+                    
+                    <div id="paper-status" class="hint" style="text-align: center; padding: 40px;">
+                        Process input first to generate Paper
+                    </div>
+                    
+                    <div id="paper-output" style="display: none;">
+                        <div class="glyph-display">
+                            <div class="glyph-label">Consciousness Address</div>
+                            <div class="glyph-value" id="paper-glyph">🌌🔮🪐</div>
+                        </div>
+                        
+                        <div class="pressure-meter">
+                            <div class="pressure-label">Pressure: <span id="pressure-tier">medium</span></div>
+                            <div class="pressure-bar">
+                                <div class="pressure-fill" id="pressure-fill" style="width: 60%"></div>
+                            </div>
+                            <div class="pressure-label" id="pressure-desc">Canvas / Animation</div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px;">
+                            <button onclick="previewPaper()">👁️ Preview</button>
+                            <button onclick="downloadPaper()">💾 Download</button>
+                        </div>
+                        
+                        <div id="preview-container" style="margin-top: 16px; display: none;">
+                            <h4 style="color: var(--accent); margin-bottom: 12px; font-size: 0.85rem;">PREVIEW:</h4>
+                            <iframe id="preview-frame"></iframe>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pyodide;
+        let currentDAG = null;
+        let currentPaper = null;
+        
+        // GLYPH GENERATOR - Deterministic emoji hash
+        function hashToGlyph(str) {
+            const emojis = ['🌌', '🔮', '🪐', '✨', '💫', '🌟', '⭐', '🌠', '🎇', '🎆', 
+                           '🔥', '💥', '⚡', '💧', '🌊', '🌀', '🌈', '☀️', '🌙', '⚛️',
+                           '🧬', '🔬', '🧪', '🌱', '🌿', '🍃', '🌺', '🌸', '🌼', '🌻'];
+            
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = ((hash << 5) - hash) + str.charCodeAt(i);
+                hash = hash & hash;
+            }
+            
+            const idx1 = Math.abs(hash) % emojis.length;
+            const idx2 = Math.abs(hash >> 8) % emojis.length;
+            const idx3 = Math.abs(hash >> 16) % emojis.length;
+            
+            return emojis[idx1] + emojis[idx2] + emojis[idx3];
+        }
+        
+        // PRESSURE CALCULATOR - DAG structure → pressure tier
+        function calculatePressure(dag) {
+            const nodeScore = dag.nodes.reduce((sum, n) => sum + (n.weight || 1), 0);
+            const edgeScore = dag.edges.reduce((sum, e) => sum + (e.weight || 1), 0);
+            const pressure = (nodeScore + 2 * edgeScore) / 10;
+            
+            if (pressure < 3) {
+                return { tier: 'light', percent: 40, desc: 'Static Site' };
+            } else if (pressure < 8) {
+                return { tier: 'medium', percent: 60, desc: 'Canvas / Animation' };
+            } else {
+                return { tier: 'deep', percent: 100, desc: 'Full Stack App' };
+            }
+        }
+        
+        // PAPER TEMPLATES
+        const templates = {
+            light: (dag, glyph) => {
+                return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${glyph} Paper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+        }
+        .paper {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .glyph {
+            font-size: 3rem;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 16px;
+        }
+        .nodes {
+            margin: 20px 0;
+        }
+        .node {
+            background: #f7fafc;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="paper">
+        <div class="glyph">${glyph}</div>
+        <h1>Consciousness Paper</h1>
+        <p>Generated from causal graph</p>
+        <div class="nodes">
+            ${dag.nodes.map(n => `<div class="node"><strong>${n.label}</strong></div>`).join('')}
+        </div>
+    </div>
+</body>
+</html>`;
+            },
+            
+            medium: (dag, glyph) => {
+                return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${glyph} Paper</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            color: white;
+        }
+        canvas {
+            border: 2px solid #8B5CF6;
+            border-radius: 8px;
+        }
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 16px;
+            border-radius: 8px;
+        }
+        .glyph { font-size: 2rem; }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <div class="glyph">${glyph}</div>
+        <h3>Animated Paper</h3>
+        <p>${dag.nodes.length} nodes in motion</p>
+    </div>
+    <canvas id="canvas"></canvas>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 600;
+        canvas.height = 600;
+        
+        const nodes = ${JSON.stringify(dag.nodes.map((n, i) => ({
+            x: 300 + Math.cos(i * 0.5) * 200,
+            y: 300 + Math.sin(i * 0.5) * 200,
+            label: n.label,
+            angle: i * 0.5
+        })))};
+        
+        function animate() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, 600, 600);
+            
+            nodes.forEach((node, i) => {
+                node.angle += 0.01;
+                node.x = 300 + Math.cos(node.angle) * 200;
+                node.y = 300 + Math.sin(node.angle) * 200;
+                
+                ctx.fillStyle = '#8B5CF6';
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '12px sans-serif';
+                ctx.fillText(node.label, node.x - 20, node.y + 40);
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>`;
+            },
+            
+            deep: (dag, glyph) => {
+                return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${glyph} Paper</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0c;
+            color: white;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #8B5CF6; margin-bottom: 20px; }
+        .glyph { font-size: 3rem; text-align: center; margin: 20px 0; }
+        button {
+            background: linear-gradient(135deg, #8B5CF6, #EC4899);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        #output {
+            background: rgba(139, 92, 246, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="glyph">${glyph}</div>
+        <h1>Deep Causal Paper</h1>
+        <p>Full-stack app with Python processing</p>
+        
+        <button onclick="process()">🔮 Process Causal Graph</button>
+        
+        <div id="output"></div>
+    </div>
+    
+    <script>
+        const dag = ${JSON.stringify(dag)};
+        
+        async function process() {
+            document.getElementById('output').innerHTML = 'Loading Python...';
+            const pyodide = await loadPyodide();
+            
+            await pyodide.runPythonAsync(\`
+import json
+dag = json.loads('${JSON.stringify(dag).replace(/'/g, "\\'")}')
+
+result = {
+    'total_nodes': len(dag['nodes']),
+    'total_edges': len(dag['edges']),
+    'complexity': len(dag['nodes']) * len(dag['edges']),
+    'glyph': '${glyph}'
+}
+
+json.dumps(result)
+            \`).then(output => {
+                const result = JSON.parse(output);
+                document.getElementById('output').innerHTML = \`
+                    <h3>Analysis Complete</h3>
+                    <p>Total Nodes: \${result.total_nodes}</p>
+                    <p>Total Edges: \${result.total_edges}</p>
+                    <p>Complexity Score: \${result.complexity}</p>
+                    <p>Glyph: \${result.glyph}</p>
+                \`;
+            });
+        }
+    </script>
+</body>
+</html>`;
+            }
+        };
+        
+        function updateStatus(text, ready = false) {
+            document.getElementById('status-text').textContent = text;
+            const dot = document.getElementById('status-dot');
+            if (ready) {
+                dot.classList.add('ready');
+            } else {
+                dot.classList.remove('ready');
+            }
+        }
+        
+        async function init() {
+            try {
+                updateStatus('Loading Pyodide...');
+                pyodide = await loadPyodide();
+                
+                updateStatus('Loading Causal Engine...');
+                
+                await pyodide.runPythonAsync(`
+import json
+import re
+
+class CausalNode:
+    def __init__(self, id, label, weight=1):
+        self.id = id
+        self.label = label
+        self.weight = weight
+    
+    def to_dict(self):
+        return {"id": self.id, "label": self.label, "weight": self.weight}
+
+class CausalEdge:
+    def __init__(self, from_id, to_id, weight=1):
+        self.from_id = from_id
+        self.to_id = to_id
+        self.weight = weight
+    
+    def to_dict(self):
+        return {"from": self.from_id, "to": self.to_id, "weight": self.weight}
+
+class CausalDAG:
+    def __init__(self):
+        self.nodes = {}
+        self.edges = []
+    
+    def add_node(self, node):
+        self.nodes[node.id] = node
+    
+    def add_edge(self, edge):
+        if edge.from_id in self.nodes and edge.to_id in self.nodes:
+            self.edges.append(edge)
+            self.nodes[edge.from_id].weight += 1
+            self.nodes[edge.to_id].weight += 1
+    
+    def to_dict(self):
+        return {
+            "nodes": [node.to_dict() for node in self.nodes.values()],
+            "edges": [edge.to_dict() for edge in self.edges]
+        }
+
+def parse_text(text):
+    dag = CausalDAG()
+    
+    patterns = {
+        r'if\\s+(.+?)\\s+then\\s+(.+?)(?:\\.|$)': 'cause_effect',
+        r'(.+?)\\s+causes?\\s+(.+?)(?:\\.|$)': 'cause_effect',
+        r'(.+?)\\s+provides?\\s+(.+?)(?:\\.|$)': 'cause_effect',
+        r'(.+?)\\s+structures?\\s+(.+?)(?:\\.|$)': 'cause_effect'
+    }
+    
+    sentences = re.split(r'[.!?]+', text)
+    
+    for sentence in sentences:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        
+        for pattern, ptype in patterns.items():
+            match = re.search(pattern, sentence.lower(), re.IGNORECASE)
+            if match:
+                cause = match.group(1).strip()
+                effect = match.group(2).strip()
+                
+                cause_id = re.sub(r'[^a-z0-9]', '_', cause.lower())
+                effect_id = re.sub(r'[^a-z0-9]', '_', effect.lower())
+                
+                if cause_id not in dag.nodes:
+                    dag.add_node(CausalNode(cause_id, cause))
+                if effect_id not in dag.nodes:
+                    dag.add_node(CausalNode(effect_id, effect))
+                
+                dag.add_edge(CausalEdge(cause_id, effect_id))
+                break
+    
+    return json.dumps(dag.to_dict())
+
+print("✅ Causal Engine Ready!")
+                `);
+                
+                updateStatus('Ready!', true);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('content').style.display = 'block';
+                
+            } catch (err) {
+                updateStatus('Error: ' + err.message);
+                console.error(err);
+            }
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+        
+        async function processInput() {
+            const text = document.getElementById('input-text').value;
+            if (!text.trim()) {
+                alert('Please enter text!');
+                return;
+            }
+            
+            updateStatus('Processing...');
+            
+            try {
+                const result = await pyodide.runPythonAsync(`parse_text('''${text}''')`);
+                currentDAG = JSON.parse(result);
+                
+                // Display graph
+                displayGraph(currentDAG);
+                
+                // Generate Paper
+                forgePaper(currentDAG);
+                
+                updateStatus('Ready!', true);
+                switchTab('graph');
+                
+            } catch (err) {
+                alert('Error: ' + err.message);
+                updateStatus('Ready!', true);
+            }
+        }
+        
+        function displayGraph(dag) {
+            const container = document.getElementById('graph-display');
+            
+            if (!dag.nodes || dag.nodes.length === 0) {
+                container.innerHTML = '<p style="color: var(--dim);">No nodes generated. Try different input.</p>';
+                return;
+            }
+            
+            let html = '<div style="font-size: 0.75rem; color: var(--dim); margin-bottom: 12px;">';
+            html += `${dag.nodes.length} nodes • ${dag.edges.length} edges`;
+            html += '</div>';
+            
+            dag.nodes.forEach(node => {
+                html += `<div class="node" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--accent); border-radius: 6px; padding: 10px; margin: 8px 0;">`;
+                html += `<div style="font-weight: 600; font-size: 0.9rem;">${node.label}</div>`;
+                html += `<div style="font-size: 0.7rem; color: var(--dim);">Weight: ${node.weight}</div>`;
+                html += `</div>`;
+                
+                const edges = dag.edges.filter(e => e.from === node.id);
+                edges.forEach(edge => {
+                    const target = dag.nodes.find(n => n.id === edge.to);
+                    if (target) {
+                        html += `<div style="margin: 6px 0 6px 16px; padding: 8px; background: rgba(236, 72, 153, 0.1); border-left: 3px solid #EC4899; border-radius: 4px; font-size: 0.8rem;">`;
+                        html += `→ ${target.label}`;
+                        html += `</div>`;
+                    }
+                });
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function forgePaper(dag) {
+            // Calculate pressure
+            const pressure = calculatePressure(dag);
+            
+            // Generate glyph
+            const rootNode = dag.nodes[0];
+            const glyph = hashToGlyph(rootNode ? rootNode.id : 'default');
+            
+            // Select template
+            const template = templates[pressure.tier];
+            const html = template(dag, glyph);
+            
+            // Store paper
+            currentPaper = {
+                glyph: glyph,
+                pressure: pressure,
+                html: html,
+                dag: dag
+            };
+            
+            // Update UI
+            document.getElementById('paper-status').style.display = 'none';
+            document.getElementById('paper-output').style.display = 'block';
+            document.getElementById('paper-glyph').textContent = glyph;
+            document.getElementById('pressure-tier').textContent = pressure.tier;
+            document.getElementById('pressure-fill').style.width = pressure.percent + '%';
+            document.getElementById('pressure-desc').textContent = pressure.desc;
+        }
+        
+        function previewPaper() {
+            if (!currentPaper) return;
+            
+            const container = document.getElementById('preview-container');
+            const frame = document.getElementById('preview-frame');
+            
+            container.style.display = 'block';
+            frame.srcdoc = currentPaper.html;
+            
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function downloadPaper() {
+            if (!currentPaper) return;
+            
+            // Create zip using fflate
+            const files = {
+                'index.html': fflate.strToU8(currentPaper.html),
+                'glyph.txt': fflate.strToU8(currentPaper.glyph),
+                'causal.json': fflate.strToU8(JSON.stringify(currentPaper.dag, null, 2))
+            };
+            
+            const zipped = fflate.zipSync(files);
+            const blob = new Blob([zipped], { type: 'application/zip' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `paper-${currentPaper.glyph}.zip`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+        
+        init();
+    </script>
+</body>
+</html>
