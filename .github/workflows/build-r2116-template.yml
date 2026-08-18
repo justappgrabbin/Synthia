@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - build/r2116-android-wrapper
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
