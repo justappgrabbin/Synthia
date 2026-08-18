@@ -1,0 +1,37 @@
+name: Build Synthia r21.16 Android Template
+
+on:
+  push:
+    branches:
+      - build/r2116-android-wrapper
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android-r2116-wrapper
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android build components
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
+      - name: Build template APK
+        run: gradle :app:assembleDebug --stacktrace
+      - name: Upload template APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-r21.16-template
+          path: android-r2116-wrapper/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
