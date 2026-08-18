@@ -32,9 +32,21 @@ jobs:
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0" "cmake;3.22.1" "ndk;27.2.12479018"
       - name: Build template APK
         run: gradle :app:assembleDebug --stacktrace
+      - name: Stage signing tools
+        run: |
+          mkdir -p build-signing-tools/lib
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" build-signing-tools/lib/apksigner.jar
+          cp "$ANDROID_HOME/build-tools/35.0.0/apksigner" build-signing-tools/apksigner
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" build-signing-tools/zipalign
       - name: Upload template APK
         uses: actions/upload-artifact@v4
         with:
           name: Synthia-r21.16-template
           path: android-r2116-wrapper/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload signing tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-signing-tools-35
+          path: android-r2116-wrapper/build-signing-tools
           if-no-files-found: error
