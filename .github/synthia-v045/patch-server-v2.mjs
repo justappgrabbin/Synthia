@@ -6,6 +6,7 @@ if (!serverFile || !patchDir) throw new Error('usage: patch-server-v2.mjs <serve
 let src = fs.readFileSync(serverFile, 'utf8');
 const syncBlock = fs.readFileSync(path.join(patchDir, 'server-sync-block.txt'), 'utf8').trimEnd();
 const syncRoutes = fs.readFileSync(path.join(patchDir, 'server-sync-routes.txt'), 'utf8').trimEnd();
+const synthai2Compat = fs.readFileSync(path.join(patchDir, 'synthai2-local-compat.txt'), 'utf8').trimEnd();
 
 function replaceString(find, replacement, label) {
   if (!src.includes(find)) throw new Error(`missing patch anchor: ${label}`);
@@ -38,7 +39,7 @@ replaceRegex(
 );
 
 const apiMarker = "// ═══════════════════════════════════════════════════════════════════\n// API ENDPOINTS";
-replaceString(apiMarker, `${syncBlock}\n\n${apiMarker}`, 'API marker');
+replaceString(apiMarker, `${syncBlock}\n\n${synthai2Compat}\n\n${apiMarker}`, 'API marker');
 const appsMarker = "// ── /apps ───────────────────────────────────────────────────────";
 replaceString(appsMarker, `${syncRoutes}\n\n${appsMarker}`, 'apps marker');
 replaceString(
@@ -54,4 +55,4 @@ replaceString(
 src = src.replace("  Any shell command also works (ls, ps, etc.)", "  Shell execution is disabled; use the listed Synthia commands.");
 
 fs.writeFileSync(serverFile, src);
-console.log('patched server.js: durable sync + real in-process MCP message bus');
+console.log('patched server.js: durable sync + real in-process MCP + Synthai2 local compatibility');
