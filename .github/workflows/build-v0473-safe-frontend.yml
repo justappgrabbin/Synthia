@@ -1,0 +1,37 @@
+name: Build Synthia v0.4.7.3 Safe Frontend
+on:
+  push:
+    branches:
+      - build/v045-birth-candidate
+    paths:
+      - '.github/front-wiring-v0473-safe/**'
+      - '.github/workflows/build-v0473-safe-frontend.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build signed safe frontend APK
+        shell: bash
+        run: |
+          chmod +x .github/front-wiring-v0473-safe/build.sh
+          .github/front-wiring-v0473-safe/build.sh
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-v0.4.7.3-SAFE-FRONTEND
+          path: |
+            out/Synthia-Phone-Selfhosted-v0.4.7.3-SAFE-FRONTEND.apk
+            out/Synthia-Phone-Selfhosted-v0.4.7.3-SAFE-FRONTEND.apk.sha256
+            out/VERIFICATION.json
+          retention-days: 7
