@@ -1,6 +1,8 @@
 # Synthia Birth Candidate — Donor Consolidation
 
-Canonical goal: preserve the currently shipped Synthia residence and state, use the repaired Android embedded-Node launcher/runtime, mount the current Synthai2 application layer, and transplant only unique capabilities from older repositories. No donor becomes a competing canonical runtime.
+Canonical goal: preserve the currently shipped Synthia residence and state, use the repaired Android embedded-Node launcher/runtime, mount the current Synthai2 application layer, reconnect the canonical `Synthia-server` backend lineage, and transplant only unique capabilities from older repositories. No donor becomes a competing canonical runtime or backend.
+
+See `SERVER_LINEAGE.md` for the non-negotiable split between the phone-local residence server, `Synthia-server`, Supabase, and Synthai2.
 
 ## Current canonical inputs
 
@@ -8,11 +10,39 @@ Canonical goal: preserve the currently shipped Synthia residence and state, use 
 - Preserve full residence payload and existing app identity (`com.synthia.phone`).
 - Preserve persistent Android app data by updating with the same signing identity.
 - Preserve Pure Synthia, Foundry/tooling, Morph/state-space modules, Inbox and existing artifacts.
+- Preserve the phone-local server only for its correct local/offline role; it is not allowed to become a competing remote backend.
+
+### `justappgrabbin/Synthia-server` — canonical backend lineage
+Pinned integration frontier for this pass: `a39bc304387097927f969fd5dd4818822705ed1e`.
+
+This is not an optional donor. It is the canonical backend/integration-hub lineage that the phone residence must reconnect to.
+
+Keep/merge by role:
+- canonical integration queue and dependency-order contract
+- Control Center/admin hub
+- address logic
+- upload/artifact routing
+- MCP/message coordination contracts
+- graph/gap/mix integration
+- Synthia bridge infrastructure
+
+Do not copy `server/lite.js` wholesale into the Android runtime. Its current implementation contains remote-host assumptions, shell/process spawning, Node 24 requirements, and optional Python/Trident process control. Port only the needed contracts/routes into the phone-safe local runtime. Supabase remains durable persistence/sync.
 
 ### `justappgrabbin/Synthai2`
-Use current `main` at build time as the application donor and record the resolved commit in the APK residence. It includes the September 3 Human Design Studio work, including deterministic local BodyGraph calculation, deep coordinates, Variables/PHS, relationship comparison, transits, sensitivity analysis and provenance.
+Use current `main` at build time as the current full-stack application/source donor and record the resolved commit in the APK residence.
 
-Do not regress the September 3 commits by building from the earlier branch point. Synthai2 is mounted inside the canonical Synthia residence; it does not replace Synthia's persistent runtime/state.
+Current app/server source includes:
+- React/Vite application surface
+- Express API
+- local in-memory storage model
+- workspace file APIs
+- persistent mesh-event API
+- app mount/run APIs
+- Human Design/chart/transit/growth services
+- external integration helpers
+- older Linux-container/Python controls
+
+For Android, keep the app surface and local-capable services, but do not start a second authoritative backend. Container/Python/external-AI services are not required for boot. API behavior needed by the app is adapted into the phone-local residence server or routed to the canonical `Synthia-server` backend.
 
 ## Historical donor repositories
 
@@ -54,7 +84,7 @@ Any retained capability must be implemented in the current JS/in-process Synthia
 Role: August Pure-JS Klein/research-module donor.
 
 Keep:
-- `src/research-modules/diseminer.js` — executable local distributional-semantics model, not merely a paper wrapper.
+- `src/research-modules/diseminer.js` — executable local distributional-semantics model
 - `src/research-modules/autoling-1968.js`
 - `src/research-modules/automatic-novel-writing.js`
 - `src/research-modules/historical-change-in-language.js`
@@ -67,8 +97,8 @@ Do not activate `GENESIS-INITIALIZER.js` as canonical logic: it contains demo/ra
 Role: LCM/state-space/resonance donor.
 
 Strong missing organs:
-- `extracted/session_build-1/hopfieldAttractor.js` — deterministic Hopfield attractor storage/recovery using gate patterns.
-- `extracted/session_build-1/stateSpace.js` — 64-gate hypercube topology, polarity, semantic triples and completion reporting.
+- `extracted/session_build-1/hopfieldAttractor.js`
+- `extracted/session_build-1/stateSpace.js`
 - `extracted/session_build-1/resonance_engine.js`
 - `extracted/session_build-1/kingWen.js`
 - `extracted/session_build-1/spectrumColor.js`
@@ -105,31 +135,53 @@ Do not restore its old phone model (PC container + same-Wi-Fi browser/PWA), Pyth
 Role: SPEC-1 / resonance / OS-shell donor.
 
 Strong missing organs:
-- `data/SPEC1_implementation.ts` — deterministic-address/world-graph/embodied-generation starter. Retain useful types/pipeline but do not accept its placeholder ephemeris calculations as authoritative.
-- `data/qian-kernel.js` — Qian five-kernel/four-trigram-body MRNN seed model.
+- `data/SPEC1_implementation.ts`
+- `data/qian-kernel.js`
 - `data/canonical/384-spectrum.json`
 - `data/chromesthesia_knowledge.json`
 - `data/isobench_knowledge.json`
 - `data/isobench_mrnn_benchmark.json`
 - `data/unified_crossmodal_knowledge_graph.json`
-- `data/synthia-os-client.js` — historical message-passing client contract.
-- `server/mcp-continuity-server.js` — reference for the packet contract only; the current durable in-process message bus supersedes its in-memory server.
-- `src/apps/os-shell/**` — UI donor only.
+- `data/synthia-os-client.js`
+- `server/mcp-continuity-server.js` as packet-contract reference only
+- `src/apps/os-shell/**` as UI donor only
+
+Do not treat placeholder ephemeris math in the SPEC-1 starter as authoritative astronomy.
 
 ### `justappgrabbin/shiny-fiesta` — pin `7a1703a0136b4022da58ab8650d1659ba789c0d6`
 Role: repaired browser/store compatibility donor.
 
-The recorded build passed with 1,738 transformed modules and preserved its OS store, App Center/App Store, browser bridge, render backend and dual-server/RAG concepts. The current repository head no longer exposes the full source tree, so treat the surviving compatibility/build notes as provenance and recover source only from Git history if a current capability gap specifically requires it.
+The recorded build passed with 1,738 transformed modules and preserved its OS store, App Center/App Store, browser bridge, render backend and dual-server/RAG concepts. Treat the surviving compatibility/build notes as provenance and recover source only from Git history if a current capability gap specifically requires it.
+
+### `justappgrabbin/didactic-octo-disco` — pin `9a3bfda679ee7242cc825ad9e147e9aed4d1110b`
+Role: historical Morph/MRNN bridge application donor.
+
+It contains a compiled app plus legacy `MRNN_MCP_Orchestrator.js`, MRNN MCP client, Morph frontend/demo, resonance OS brain, a Synthia integration checkpoint, and old Python QHD/Trident services. `Synthia-server` already carries the didactic message bridge, so do not duplicate that bridge. Preserve the MRNN/Morph logic only when it adds behavior not already present in Pure Synthia.
+
+### `justappgrabbin/resonance-neural-net` — pin `cb30a6e9d5ad68412bfcea19029ee184664185bb`
+Role: resonance-orchestrator donor explicitly designed to connect to `Synthia-server`.
+
+Strong donor:
+- `client/src/lib/orchestrator.ts` — self-assembling resonance orchestrator with node lifecycle, senses, connecting points, Super Base retrieval, RAG/code/MCP interfaces, discovery and assembly concepts.
+- neural mesh visualization / meta-orchestrator UI may be retained as tooling surfaces.
+
+Do not import its older coordinate constants as the canonical address spine. Its 5-mesh/13-layer/center/node addressing predates the current canonical Synthia address model. Port the orchestration mechanics onto the current state/address model instead.
+
+### `justappgrabbin/SynthAI-Hub` — pin `c270f50116dc973967e6ed39a74808267d86ac76`
+Role: historical backend/control-center duplicate.
+
+Its `README.md`, `control-center-api.js`, and `mcp-hub-addon.js` are byte-identical to files already represented in the `Synthia-server` lineage. Do not mount this as a second hub. Preserve its `synthia-populate-workflow.yml` only as historical automation/provenance if useful.
 
 ## Selected missing-organ queue
 
-These were explicitly checked against the current `Synthia` / `Synthai2` default branches and were not found there under their donor identities:
+Explicitly missing or materially distinct from the current canonical runtime under their donor identities:
 1. Hopfield gate attractor implementation.
 2. SPEC-1 TypeScript implementation starter.
 3. Qian kernel implementation.
 4. August Pure-JS distributional DISEMINER research module.
+5. Resonance neural-net orchestration mechanics, adapted to the current canonical address/state model.
 
-The birth build copies the pinned donor sources into `pure-synthia/donors/recovered/` so they are physically carried into the phone residence. Activation remains capability-by-capability after compatibility verification; preservation does not imply unreviewed execution.
+The birth build preserves pinned donor sources under `pure-synthia/donors/recovered/`. Activation remains capability-by-capability after compatibility verification; preservation does not imply unreviewed execution.
 
 ## Selection rules
 
@@ -143,11 +195,13 @@ The birth build copies the pinned donor sources into `pure-synthia/donors/recove
 8. Backend-delivered artifacts are acknowledged only after successful local persistence and checksum verification.
 9. The new UI must not hide or orphan legacy residence artifacts; legacy modules remain addressable through the residence/app registry.
 10. Donor files are commit-pinned for reproducibility; moving repository heads cannot silently change the APK payload.
+11. `Synthia-server` is the canonical backend lineage. Supabase is persistence/sync. The phone-local server is the offline residence host. Synthai2 is the current app/source layer.
 
 ## Freeze condition
 
 Do not issue the replacement APK until:
-- current Synthai2 main is built and physically included in the residence;
-- both doodle donors and the seven additional repositories above have been capability-diffed against the consolidated runtime;
+- current Synthai2 main is built/preserved and its required local APIs have a working phone-safe route;
+- `Synthia-server` is reconnected as the canonical backend lineage rather than silently replaced;
+- all named donor repositories have been capability-diffed against the consolidated runtime;
 - selected unique organs are mounted or explicitly retained as reference/dormant source;
 - sync, persistence, Inbox/admin actions, uploader, builder intake, runtime restart/recovery and local UI startup pass build verification.
