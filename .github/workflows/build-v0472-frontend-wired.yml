@@ -28,6 +28,8 @@ jobs:
           sed -i 's|^"$BASEBUILD"$|RUNNER_TEMP="$TMP/base-runner" "$BASEBUILD"|' .github/front-wiring-v0472/build.sh
           chmod +x .github/front-wiring-v0472/build.sh
           .github/front-wiring-v0472/build.sh
+          chmod +x .github/front-wiring-v0472/apply-installed-refresh.sh
+          .github/front-wiring-v0472/apply-installed-refresh.sh
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
