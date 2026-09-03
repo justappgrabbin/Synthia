@@ -1,0 +1,47 @@
+name: Build Synthia v0.4.6 Inbox Fix
+
+on:
+  push:
+    branches:
+      - build/v045-birth-candidate
+    paths:
+      - '.github/inbox-fix-v046/**'
+      - '.github/workflows/build-v046-inbox-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build exact inbox-fix update
+        shell: bash
+        run: |
+          chmod +x .github/inbox-fix-v046/build.sh
+          .github/inbox-fix-v046/build.sh
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-v0.4.6-INBOX-FIX
+          path: |
+            out/Synthia-Phone-Selfhosted-v0.4.6-INBOX-FIX.apk
+            out/Synthia-Phone-Selfhosted-v0.4.6-INBOX-FIX.apk.sha256
+            out/VERIFICATION.json
+          retention-days: 7
