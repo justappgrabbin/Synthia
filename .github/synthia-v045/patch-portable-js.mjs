@@ -133,7 +133,7 @@ async function runSelfWriter`,
 );
 
 replaceRegex(
-  /async function runSelfWriter\(prompt\) \{[\s\S]*?\n\}\n\nasync function synthiaChatEnvelope/,
+  /async function runSelfWriter\(prompt\) \{[\s\S]*?\n\}\n\n(?:async\s+)?function synthiaChatEnvelope/,
   `async function runSelfWriter(prompt) {
   ensureBuilderDirs();
   const job = {
