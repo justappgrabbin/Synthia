@@ -33,6 +33,7 @@ jobs:
       - name: Build exact inbox-fix update
         shell: bash
         run: |
+          node .github/inbox-fix-v046/prepare-build.mjs
           chmod +x .github/inbox-fix-v046/build.sh
           .github/inbox-fix-v046/build.sh
 
