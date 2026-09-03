@@ -1,0 +1,37 @@
+name: Build Synthia v0.4.7 Artifact Foundry
+on:
+  push:
+    branches:
+      - build/v045-birth-candidate
+    paths:
+      - '.github/artifact-foundry-v047/**'
+      - '.github/workflows/build-v047-artifact-foundry.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build signed Artifact Foundry APK
+        shell: bash
+        run: |
+          chmod +x .github/artifact-foundry-v047/build.sh
+          .github/artifact-foundry-v047/build.sh
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-v0.4.7-ARTIFACT-FOUNDRY
+          path: |
+            out/Synthia-Phone-Selfhosted-v0.4.7-ARTIFACT-FOUNDRY.apk
+            out/Synthia-Phone-Selfhosted-v0.4.7-ARTIFACT-FOUNDRY.apk.sha256
+            out/VERIFICATION.json
+          retention-days: 7
