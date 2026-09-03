@@ -1,0 +1,11 @@
+import fs from 'node:fs';
+const p=process.argv[2]; if(!p) throw new Error('usage: patch-foundry.mjs <foundry.js>');
+let s=fs.readFileSync(p,'utf8');
+s=s.replace("window.__SYNTHIA_ARTIFACT_FOUNDRY__={version:'1.0.0'};", "window.__SYNTHIA_ARTIFACT_FOUNDRY__={version:'1.0.1',open(){},close(){}};");
+s=s.replace(/#saf-btn\{[^}]+\}/, '');
+const old="function shell(){const s=el('style',{text:css()}),btn=el('button',{id:'saf-btn',title:'Artifact Foundry',text:'◇',onclick:()=>q('#saf').classList.add('open')}),root=el('div',{id:'saf'});";
+const rep="function shell(){const s=el('style',{text:css()}),root=el('div',{id:'saf'});";
+if(!s.includes(old)) throw new Error('foundry shell anchor missing');
+s=s.replace(old,rep);
+s=s.replace("document.head.append(s);document.body.append(btn,root,inp);", "document.head.append(s);document.body.append(root,inp);window.__SYNTHIA_ARTIFACT_FOUNDRY__.open=()=>root.classList.add('open');window.__SYNTHIA_ARTIFACT_FOUNDRY__.close=()=>root.classList.remove('open');");
+fs.writeFileSync(p,s);
