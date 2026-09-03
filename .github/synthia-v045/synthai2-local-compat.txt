@@ -1,0 +1,188 @@
+// ── Synthai2 phone-local compatibility layer ───────────────────────────────
+// This exposes the local-capable API surface expected by the current Synthai2
+// dashboard without creating a second backend or requiring Python/Linux shell.
+const SYN2_ROOT = path.join(DATA_DIR, 'synthai2-local');
+const SYN2_WORKSPACE = path.join(SYN2_ROOT, 'workspace');
+const SYN2_APPS = path.join(SYN2_ROOT, 'mounted-apps');
+const SYN2_MESH_FILE = path.join(SYN2_ROOT, 'mesh-events.json');
+fs.mkdirSync(SYN2_WORKSPACE, { recursive: true });
+fs.mkdirSync(SYN2_APPS, { recursive: true });
+
+function syn2Safe(root, relative = '.') {
+  const resolvedRoot = path.resolve(root);
+  const resolved = path.resolve(root, String(relative || '.'));
+  if (resolved !== resolvedRoot && !resolved.startsWith(resolvedRoot + path.sep)) {
+    throw new Error('path escapes Synthia residence');
+  }
+  return resolved;
+}
+
+function syn2ReadMesh() {
+  try {
+    const parsed = JSON.parse(fs.readFileSync(SYN2_MESH_FILE, 'utf8'));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) { return []; }
+}
+function syn2WriteMesh(events) {
+  fs.mkdirSync(path.dirname(SYN2_MESH_FILE), { recursive: true });
+  const tmp = SYN2_MESH_FILE + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(events.slice(-1000), null, 2));
+  fs.renameSync(tmp, SYN2_MESH_FILE);
+}
+function syn2PublishMesh(input = {}) {
+  const events = syn2ReadMesh();
+  const event = {
+    id: input.id || `mesh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    source: input.source || 'phone-local',
+    type: input.type || 'mesh.event',
+    topic: input.topic || 'general',
+    payload: input.payload || {},
+    createdAt: input.createdAt || new Date().toISOString(),
+  };
+  events.push(event);
+  syn2WriteMesh(events);
+  return event;
+}
+
+function syn2WorkspaceFiles(relative = '.') {
+  const base = syn2Safe(SYN2_WORKSPACE, relative);
+  if (!fs.existsSync(base)) return [];
+  const out = [];
+  const walk = (dir, depth = 0) => {
+    if (depth > 8) return;
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      const rel = path.relative(SYN2_WORKSPACE, full).split(path.sep).join('/');
+      if (entry.isDirectory()) walk(full, depth + 1);
+      else {
+        const stat = fs.statSync(full);
+        out.push({ path: rel, size: stat.size, modifiedAt: stat.mtime.toISOString() });
+      }
+      if (out.length >= 2000) return;
+    }
+  };
+  const stat = fs.statSync(base);
+  if (stat.isDirectory()) walk(base); else out.push({ path: path.relative(SYN2_WORKSPACE, base), size: stat.size, modifiedAt: stat.mtime.toISOString() });
+  return out;
+}
+
+function syn2MountedApps() {
+  const apps = [];
+  if (!fs.existsSync(SYN2_APPS)) return apps;
+  for (const id of fs.readdirSync(SYN2_APPS)) {
+    const manifestPath = path.join(SYN2_APPS, id, 'manifest.json');
+    try { apps.push(JSON.parse(fs.readFileSync(manifestPath, 'utf8'))); } catch (_) {}
+  }
+  return apps.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+}
+
+app.get('/api/health', (_req, res) => {
+  const mesh = syn2ReadMesh();
+  res.json({
+    status: 'ok',
+    service: 'Synthia Phone Residence API',
+    mesh: { status: 'online', events: mesh.length, topics: [...new Set(mesh.map(e => e.topic).filter(Boolean))] },
+    container: { enabled: true, kind: 'android-embedded-node', shell: false, cwd: DATA_DIR },
+    python: { running: false, managed: false, required: false },
+    workspace: { root: SYN2_WORKSPACE, exists: fs.existsSync(SYN2_WORKSPACE) },
+    apps: { mounted: syn2MountedApps().length },
+    local: true,
+    persistent: true,
+  });
+});
+
+app.get('/api/mesh/status', (_req, res) => {
+  const events = syn2ReadMesh();
+  res.json({ status: 'online', events: events.length, topics: [...new Set(events.map(e => e.topic).filter(Boolean))], persistent: true });
+});
+app.get('/api/mesh/events', (req, res) => {
+  const limit = Math.max(1, Math.min(1000, Number(req.query.limit || 100)));
+  res.json({ success: true, events: syn2ReadMesh().slice(-limit).reverse() });
+});
+app.post('/api/mesh/events', (req, res) => res.json({ success: true, event: syn2PublishMesh(req.body || {}) }));
+
+app.get('/api/workspace/status', (_req, res) => res.json({ root: SYN2_WORKSPACE, exists: true, persistent: true }));
+app.get('/api/workspace/files', (req, res) => {
+  try { res.json({ success: true, root: SYN2_WORKSPACE, files: syn2WorkspaceFiles(String(req.query.dir || '.')) }); }
+  catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+app.get('/api/workspace/files/:path(*)', (req, res) => {
+  try {
+    const file = syn2Safe(SYN2_WORKSPACE, req.params.path);
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) return res.status(404).json({ success: false, error: 'file not found' });
+    const bytes = fs.readFileSync(file);
+    res.json({ success: true, file: { path: req.params.path, size: bytes.length, content: bytes.toString('utf8'), base64: bytes.toString('base64') } });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+app.post('/api/workspace/files', (req, res) => {
+  try {
+    const rel = String(req.body?.path || '');
+    if (!rel) return res.status(400).json({ success: false, error: 'path required' });
+    const file = syn2Safe(SYN2_WORKSPACE, rel);
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const bytes = req.body?.base64 !== undefined ? Buffer.from(String(req.body.base64), 'base64') : Buffer.from(String(req.body?.content || ''), 'utf8');
+    const tmp = file + '.tmp';
+    fs.writeFileSync(tmp, bytes);
+    fs.renameSync(tmp, file);
+    const record = { path: rel, size: bytes.length, modifiedAt: new Date().toISOString() };
+    syn2PublishMesh({ source: 'workspace', type: 'workspace.file.written', topic: rel, payload: record });
+    res.json({ success: true, file: record });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+
+app.get('/api/apps', (_req, res) => res.json({ success: true, apps: syn2MountedApps() }));
+app.post('/api/apps/mount', (req, res) => {
+  try {
+    const files = Array.isArray(req.body?.files) ? req.body.files : [];
+    if (!files.length) return res.status(400).json({ success: false, error: 'files required' });
+    const name = String(req.body?.name || 'mounted-app').slice(0, 120);
+    const id = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'app'}-${Date.now()}`;
+    const root = path.join(SYN2_APPS, id);
+    fs.mkdirSync(root, { recursive: true });
+    const written = [];
+    for (const item of files) {
+      const rel = String(item?.path || '');
+      if (!rel) continue;
+      const target = syn2Safe(root, rel);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      const bytes = item.base64 !== undefined ? Buffer.from(String(item.base64), 'base64') : Buffer.from(String(item.content || ''), 'utf8');
+      fs.writeFileSync(target, bytes);
+      written.push(rel);
+    }
+    const appEntry = { id, name, path: root, runCommand: req.body?.runCommand || '', files: written, createdAt: new Date().toISOString() };
+    fs.writeFileSync(path.join(root, 'manifest.json'), JSON.stringify(appEntry, null, 2));
+    syn2PublishMesh({ source: 'app-mount', type: 'app.mounted', topic: id, payload: appEntry });
+    res.json({ success: true, app: appEntry });
+  } catch (error) { res.status(400).json({ success: false, error: error.message }); }
+});
+app.post('/api/apps/:id/run', async (req, res) => {
+  const appEntry = syn2MountedApps().find(item => item.id === req.params.id);
+  if (!appEntry) return res.status(404).json({ success: false, error: 'mounted app not found' });
+  const requested = String(req.body?.command || appEntry.runCommand || '').trim();
+  const match = requested.match(/^node\s+([^\s]+)$/);
+  if (!match) return res.status(400).json({ success: false, error: 'phone runner accepts only: node <relative-js-file>' });
+  let entry;
+  try { entry = syn2Safe(appEntry.path, match[1]); } catch (error) { return res.status(400).json({ success: false, error: error.message }); }
+  if (!fs.existsSync(entry)) return res.status(404).json({ success: false, error: 'entry file not found' });
+  const { spawn } = require('child_process');
+  const child = spawn(process.execPath, [entry], { cwd: appEntry.path, env: { ...process.env, DATA_DIR }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let stdout = '', stderr = '', finished = false;
+  const cap = text => text.slice(-262144);
+  child.stdout.on('data', chunk => { stdout = cap(stdout + chunk.toString()); });
+  child.stderr.on('data', chunk => { stderr = cap(stderr + chunk.toString()); });
+  const timer = setTimeout(() => { if (!finished) child.kill('SIGKILL'); }, 15000);
+  child.on('error', error => { if (finished) return; finished = true; clearTimeout(timer); res.status(500).json({ success: false, run: { command: requested, code: null, stdout, stderr: cap(stderr + error.message) } }); });
+  child.on('exit', code => {
+    if (finished) return;
+    finished = true; clearTimeout(timer);
+    const run = { command: requested, code, stdout, stderr };
+    syn2PublishMesh({ source: 'app-runner', type: 'app.ran', topic: appEntry.id, payload: { command: requested, code } });
+    res.json({ success: code === 0, app: appEntry, run });
+  });
+});
+
+// Honest compatibility: the phone residence is the container; Python is not a boot dependency.
+app.get('/api/container/status', (_req, res) => res.json({ enabled: true, kind: 'android-embedded-node', shell: false, cwd: DATA_DIR }));
+app.post('/api/container/exec', (_req, res) => res.status(403).json({ success: false, error: 'arbitrary shell execution is disabled in the phone residence' }));
+app.get('/api/python/status', (_req, res) => res.json({ running: false, managed: false, required: false }));
+app.get('/api/python/proxy/health', (_req, res) => res.status(503).json({ running: false, required: false, error: 'Python service is not required by Synthia phone runtime' }));
