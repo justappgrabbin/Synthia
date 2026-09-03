@@ -24,6 +24,7 @@ jobs:
       - name: Build signed Synthia frontend-wired APK
         shell: bash
         run: |
+          sed -i 's|TMP="${RUNNER_TEMP:-/tmp/synthia-v0472-front-wiring}"|TMP="${RUNNER_TEMP:-/tmp}/synthia-v0472-front-wiring"|' .github/front-wiring-v0472/build.sh
           chmod +x .github/front-wiring-v0472/build.sh
           .github/front-wiring-v0472/build.sh
       - name: Upload APK
