@@ -1,0 +1,159 @@
+// ═══════════════════════════════════════════════════════════════════
+// PHONE SYNC — durable two-way residence bridge
+// ═══════════════════════════════════════════════════════════════════
+let phoneSyncTimer = null;
+let phoneSyncBusy = false;
+
+function loadPhoneSyncConfig() {
+  try {
+    if (!fs.existsSync(PHONE_SYNC_CONFIG_FILE)) return null;
+    const cfg = JSON.parse(fs.readFileSync(PHONE_SYNC_CONFIG_FILE, 'utf8'));
+    if (!cfg.endpoint || !cfg.file_endpoint || !cfg.workspace_id || !cfg.participant_ref || !cfg.token) return null;
+    return cfg;
+  } catch (err) {
+    console.error('Phone sync config failed:', err.message);
+    return null;
+  }
+}
+function loadPhoneSyncState() {
+  try { if (fs.existsSync(SYNC_STATE_FILE)) return JSON.parse(fs.readFileSync(SYNC_STATE_FILE, 'utf8')); } catch (_) {}
+  return { last_seen_version: 0, connected: false, last_poll_at: null, last_success_at: null, last_error: null, installed: [] };
+}
+const PHONE_SYNC = loadPhoneSyncState();
+function savePhoneSyncState() {
+  ensureDataDir();
+  fs.writeFileSync(SYNC_STATE_FILE, JSON.stringify(PHONE_SYNC, null, 2));
+}
+async function fileSha256(filePath) {
+  return await new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+    stream.on('error', reject);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+}
+async function phoneSyncRpc(name, args = {}) {
+  const cfg = loadPhoneSyncConfig();
+  if (!cfg) throw new Error('phone sync config missing');
+  const response = await fetch(cfg.endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${cfg.token}` },
+    body: JSON.stringify({ jsonrpc: '2.0', id: Date.now(), method: 'tools/call', params: { name, arguments: { workspace_id: cfg.workspace_id, ...args } } })
+  });
+  const body = await response.json();
+  if (!response.ok || body.error) throw new Error(body.error?.message || body.message || `sync RPC ${name} failed`);
+  return body.result?.structuredContent?.result ?? JSON.parse(body.result?.content?.[0]?.text || 'null');
+}
+async function fetchSyncJson(url) {
+  const cfg = loadPhoneSyncConfig();
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${cfg.token}` }, cache: 'no-store' });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body) throw new Error(body?.error || `sync fetch failed (${response.status})`);
+  return body;
+}
+async function installBinaryEvent(event) {
+  const cfg = loadPhoneSyncConfig();
+  const packageKey = String(event.payload?.package_key || '').trim();
+  const versionLabel = String(event.payload?.version_label || '').trim();
+  if (!packageKey || !versionLabel) throw new Error('binary event missing package/version');
+  const manifestUrl = `${cfg.file_endpoint}?package=${encodeURIComponent(packageKey)}&version=${encodeURIComponent(versionLabel)}`;
+  const manifest = await fetchSyncJson(manifestUrl);
+  if (!manifest.ok) throw new Error(manifest.error || 'binary manifest unavailable');
+
+  const safePackage = packageKey.replace(/[^A-Za-z0-9._-]/g, '_');
+  const safeVersion = versionLabel.replace(/[^A-Za-z0-9._-]/g, '_');
+  const packageDir = path.join(SYNC_INBOX_DIR, `${safePackage}@${safeVersion}`);
+  ensureDir(packageDir);
+
+  for (const item of manifest.files || []) {
+    const rel = safeRelativePath(item.file_path || item.object_path);
+    if (!rel || !item.storage_path) throw new Error('unsafe binary manifest path');
+    const target = resolveInside(packageDir, rel);
+    if (!target) throw new Error(`unsafe sync target: ${rel}`);
+    ensureDir(path.dirname(target));
+    const temp = `${target}.part`;
+    const response = await fetch(`${cfg.file_endpoint}?path=${encodeURIComponent(item.storage_path)}`, { headers: { Authorization: `Bearer ${cfg.token}` }, cache: 'no-store' });
+    if (!response.ok || !response.body) throw new Error(`download failed for ${rel}: ${response.status}`);
+    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(temp));
+    const actual = await fileSha256(temp);
+    if (item.sha256 && actual.toLowerCase() !== String(item.sha256).toLowerCase()) {
+      fs.rmSync(temp, { force: true });
+      throw new Error(`checksum mismatch for ${rel}`);
+    }
+    fs.renameSync(temp, target);
+  }
+
+  fs.writeFileSync(path.join(packageDir, 'SYNTHIA-SYNC-MANIFEST.json'), JSON.stringify({ ...manifest, event_uuid: event.event_uuid, workspace_version: event.workspace_version }, null, 2));
+  ensureDir(WATCH_DIR);
+  const watchTarget = path.join(WATCH_DIR, `${safePackage}@${safeVersion}`);
+  if (!fs.existsSync(watchTarget)) fs.cpSync(packageDir, watchTarget, { recursive: true });
+  scanWatchInbox();
+  PHONE_SYNC.installed ||= [];
+  PHONE_SYNC.installed.unshift({ package_key: packageKey, version_label: versionLabel, event_uuid: event.event_uuid, installed_at: Date.now(), path: packageDir });
+  PHONE_SYNC.installed = PHONE_SYNC.installed.slice(0, 100);
+  return { package_key: packageKey, version_label: versionLabel, path: packageDir, files: manifest.file_count || manifest.files?.length || 0 };
+}
+async function pollPhoneSync() {
+  if (phoneSyncBusy) return { ok: true, busy: true, ...PHONE_SYNC };
+  phoneSyncBusy = true;
+  PHONE_SYNC.last_poll_at = Date.now();
+  try {
+    const cfg = loadPhoneSyncConfig();
+    if (!cfg) throw new Error('phone sync config missing');
+    const updates = await phoneSyncRpc('synthia_get_updates', { since_version: Number(PHONE_SYNC.last_seen_version || 0), limit: 100 });
+    for (const event of updates || []) {
+      let details = { event_type: event.event_type };
+      if (event.event_type === 'artifact.binary_ready') details = { ...details, ...(await installBinaryEvent(event)) };
+      await phoneSyncRpc('synthia_acknowledge_update', {
+        participant_ref: cfg.participant_ref,
+        event_uuid: event.event_uuid,
+        receipt_status: event.event_type === 'artifact.binary_ready' ? 'applied' : 'seen',
+        details
+      });
+      PHONE_SYNC.last_seen_version = event.workspace_version;
+      PHONE_SYNC.last_success_at = Date.now();
+      PHONE_SYNC.last_error = null;
+      PHONE_SYNC.connected = true;
+      savePhoneSyncState();
+    }
+    if (!(updates || []).length) {
+      PHONE_SYNC.connected = true;
+      PHONE_SYNC.last_success_at = Date.now();
+      PHONE_SYNC.last_error = null;
+      savePhoneSyncState();
+    }
+    return { ok: true, updates: (updates || []).length, ...PHONE_SYNC };
+  } catch (err) {
+    PHONE_SYNC.connected = false;
+    PHONE_SYNC.last_error = err.message;
+    savePhoneSyncState();
+    logEvent('error', 'phone-sync', `Phone sync failed: ${err.message}`);
+    return { ok: false, error: err.message, ...PHONE_SYNC };
+  } finally {
+    phoneSyncBusy = false;
+  }
+}
+function startPhoneSync() {
+  if (phoneSyncTimer) return;
+  ensureDir(SYNC_INBOX_DIR);
+  phoneSyncTimer = setInterval(() => { pollPhoneSync().catch(() => {}); }, SYNC_POLL_MS);
+  setTimeout(() => { pollPhoneSync().catch(() => {}); }, 1200).unref();
+}
+async function phoneNotifications() {
+  const [mine, owner] = await Promise.all([
+    phoneSyncRpc('synthia_get_notifications', { recipient_ref: 'synthia', unread_only: true, limit: 100 }),
+    phoneSyncRpc('synthia_get_notifications', { recipient_ref: 'adaya', unread_only: true, limit: 100 })
+  ]);
+  const unique = new Map([...(mine || []), ...(owner || [])].map(n => [n.notification_type + ':' + (n.payload?.request_id || n.payload?.proposal_id || n.notification_id), n]));
+  return [...unique.values()].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+}
+async function markDecisionNotificationsRead(notice) {
+  const all = await Promise.all([
+    phoneSyncRpc('synthia_get_notifications', { recipient_ref: 'synthia', unread_only: true, limit: 100 }),
+    phoneSyncRpc('synthia_get_notifications', { recipient_ref: 'adaya', unread_only: true, limit: 100 })
+  ]);
+  const key = notice.payload?.request_id || notice.payload?.proposal_id || null;
+  const matches = all.flat().filter(n => n.notification_type === notice.notification_type && (key ? (n.payload?.request_id === key || n.payload?.proposal_id === key) : n.notification_id === notice.notification_id));
+  await Promise.all(matches.map(n => phoneSyncRpc('synthia_mark_notification_read', { notification_id: n.notification_id })));
+}
