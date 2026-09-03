@@ -1,0 +1,37 @@
+name: Build Synthia v0.4.7.1 Backend Update Spine
+on:
+  push:
+    branches:
+      - build/v045-birth-candidate
+    paths:
+      - '.github/backend-update-v0471/**'
+      - '.github/workflows/build-v0471-backend-update.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build signed Synthia backend + update spine APK
+        shell: bash
+        run: |
+          chmod +x .github/backend-update-v0471/build.sh
+          .github/backend-update-v0471/build.sh
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-v0.4.7.1-BACKEND-UPDATE-SPINE
+          path: |
+            out/Synthia-Phone-Selfhosted-v0.4.7.1-BACKEND-UPDATE-SPINE.apk
+            out/Synthia-Phone-Selfhosted-v0.4.7.1-BACKEND-UPDATE-SPINE.apk.sha256
+            out/VERIFICATION.json
+          retention-days: 7
