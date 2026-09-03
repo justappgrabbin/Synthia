@@ -24,6 +24,7 @@ jobs:
       - name: Build signed Artifact Foundry APK
         shell: bash
         run: |
+          node .github/artifact-foundry-v047/prepare-build.mjs
           chmod +x .github/artifact-foundry-v047/build.sh
           .github/artifact-foundry-v047/build.sh
       - name: Upload APK
