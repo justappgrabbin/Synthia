@@ -1,4 +1,4 @@
-name: Build Synthia v0.4.5 Birth Candidate
+name: Build Synthia v0.4.6 Birth Candidate
 
 on:
   push:
@@ -16,252 +16,29 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    env:
-      BRIDGE: https://leisphnjslcuepflefri.supabase.co/functions/v1/synthia-github-build-bridge
-      WRAPPER: android-r2116-wrapper
-      PATCHDIR: .github/synthia-v045
-      OUTBASE: Synthia-Phone-Selfhosted-v0.4.5-BIRTH-CANDIDATE.apk
+    timeout-minutes: 60
     steps:
-      - name: Checkout birth-candidate branch
+      - name: Checkout Synthia birth branch
         uses: actions/checkout@v4
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Acquire short-lived GitHub build identity
+      - name: Build and verify Synthia birth candidate
         shell: bash
         run: |
-          set -euo pipefail
-          response="$(curl -fsS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=synthia-birth-build")"
-          token="$(printf '%s' "$response" | jq -r '.value')"
-          test -n "$token" && test "$token" != null
-          printf '%s' "$token" > "$RUNNER_TEMP/synthia-oidc-token"
-          chmod 600 "$RUNNER_TEMP/synthia-oidc-token"
+          chmod +x .github/synthia-v045/build-v046.sh
+          .github/synthia-v045/build-v046.sh
 
-      - name: Retrieve canonical APK, signing kit, and private phone config
-        shell: bash
-        run: |
-          set -euo pipefail
-          auth="Authorization: Bearer $(cat "$RUNNER_TEMP/synthia-oidc-token")"
-          mkdir -p "$RUNNER_TEMP/synthia-inputs"
-          curl -fsS -H "$auth" "$BRIDGE?asset=apk0" -o "$RUNNER_TEMP/synthia-inputs/apk.part-00"
-          curl -fsS -H "$auth" "$BRIDGE?asset=apk1" -o "$RUNNER_TEMP/synthia-inputs/apk.part-01"
-          curl -fsS -H "$auth" "$BRIDGE?asset=signing" -o "$RUNNER_TEMP/synthia-inputs/signing.zip"
-          curl -fsS -H "$auth" "$BRIDGE?asset=phoneconfig" -o "$RUNNER_TEMP/synthia-inputs/phone-sync-config.json"
-          cat "$RUNNER_TEMP/synthia-inputs/apk.part-00" "$RUNNER_TEMP/synthia-inputs/apk.part-01" > "$RUNNER_TEMP/current.apk"
-          unzip -tq "$RUNNER_TEMP/current.apk" >/dev/null
-
-      - name: Detect current Android identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)"
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)"
-          ZIPALIGN="$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)"
-          test -x "$AAPT" && test -x "$APKSIGNER" && test -x "$ZIPALIGN"
-          badging="$($AAPT dump badging "$RUNNER_TEMP/current.apk")"
-          app_id="$(printf '%s\n' "$badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
-          old_code="$(printf '%s\n' "$badging" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p" | head -1)"
-          test -n "$app_id" && test -n "$old_code"
-          new_code="$((old_code + 1))"
-          original_cert="$($APKSIGNER verify --print-certs "$RUNNER_TEMP/current.apk" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
-          test -n "$original_cert"
-          {
-            echo "SYNTHIA_APPLICATION_ID=$app_id"
-            echo "SYNTHIA_OLD_VERSION_CODE=$old_code"
-            echo "SYNTHIA_VERSION_CODE=$new_code"
-            echo "SYNTHIA_VERSION_NAME=0.4.5-birth-candidate.1"
-            echo "AAPT=$AAPT"
-            echo "APKSIGNER=$APKSIGNER"
-            echo "ZIPALIGN=$ZIPALIGN"
-            echo "ORIGINAL_CERT=$original_cert"
-          } >> "$GITHUB_ENV"
-
-      - name: Extract canonical Synthia residence
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf "$RUNNER_TEMP/residence-extract" "$RUNNER_TEMP/residence"
-          mkdir -p "$RUNNER_TEMP/residence-extract"
-          unzip -q "$RUNNER_TEMP/current.apk" 'assets/synthia-server/*' -d "$RUNNER_TEMP/residence-extract"
-          mv "$RUNNER_TEMP/residence-extract/assets/synthia-server" "$RUNNER_TEMP/residence"
-          test -f "$RUNNER_TEMP/residence/server.js"
-          test -f "$RUNNER_TEMP/residence/pure-synthia/runtime/daemon.mjs"
-          test -f "$RUNNER_TEMP/residence/apps/synthia-sovereign-studio/dist/public/apps/mobile-linux/index.html"
-
-      - name: Apply full unwired-component repair
-        shell: bash
-        run: |
-          set -euo pipefail
-          server="$RUNNER_TEMP/residence/server.js"
-          node "$PATCHDIR/patch-server-v2.mjs" "$server" "$PATCHDIR"
-          node "$PATCHDIR/patch-embedded-node.mjs" "$server"
-          node "$PATCHDIR/patch-portable-js.mjs" "$server"
-          cp "$PATCHDIR/synthia-sync-connector.js" "$RUNNER_TEMP/residence/apps/synthia-sovereign-studio/dist/public/apps/mobile-linux/assets/synthia-sync-connector.js"
-          mkdir -p "$RUNNER_TEMP/residence/config"
-          cp "$RUNNER_TEMP/synthia-inputs/phone-sync-config.json" "$RUNNER_TEMP/residence/config/phone-sync.json"
-          node -e "const fs=require('fs');const p='$RUNNER_TEMP/residence/package.json';const j=JSON.parse(fs.readFileSync(p));j.dependencies={...(j.dependencies||{}),'adm-zip':'^0.5.16'};delete j.scripts?.ingest;fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n')"
-          grep -q "pure-synthia-morph-chat" "$server"
-          grep -q "artifact.binary_ready" "$server"
-          grep -q "startPhoneSync" "$server"
-          ! grep -q "function pythonInvocation" "$server"
-          ! grep -q "spawn('bash'" "$server"
-          ! grep -q "execFileSync('git'" "$server"
-          node --check "$server"
-
-      - name: Bundle production JS dependencies
-        shell: bash
-        working-directory: ${{ runner.temp }}/residence
-        run: |
-          set -euo pipefail
-          npm install --omit=dev --ignore-scripts --no-audit --no-fund
-          test -d node_modules/express
-          test -d node_modules/ws
-          test -d node_modules/cors
-          test -d node_modules/adm-zip
-
-      - name: Run Pure Synthia wiring checks
-        shell: bash
-        working-directory: ${{ runner.temp }}/residence
-        run: |
-          set -euo pipefail
-          node pure-synthia/tests/full-wiring.node.mjs
-          node pure-synthia/tests/durable-restart.node.mjs
-          node pure-synthia/tests/current-synthia-swarm.node.mjs
-
-      - name: Build canonical residence payload
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f "$RUNNER_TEMP/synthia-v045.zip"
-          (cd "$RUNNER_TEMP/residence" && zip -q -r "$RUNNER_TEMP/synthia-v045.zip" . -x '*.git/*' '*.DS_Store')
-          unzip -tq "$RUNNER_TEMP/synthia-v045.zip" >/dev/null
-          payload_sha="$(sha256sum "$RUNNER_TEMP/synthia-v045.zip" | awk '{print $1}')"
-          echo "PAYLOAD_SHA=$payload_sha" >> "$GITHUB_ENV"
-
-      - name: Assemble Android embedded-Node wrapper
-        shell: bash
-        run: |
-          set -euo pipefail
-          app="$WRAPPER/app"
-          mkdir -p "$app/src/main/java/world/synthia/r2116" "$app/src/main/res/drawable" "$app/src/main/assets"
-          cp "$PATCHDIR/MainActivity.java" "$app/src/main/java/world/synthia/r2116/MainActivity.java"
-          cp "$PATCHDIR/NodeRuntime.java" "$app/src/main/java/world/synthia/r2116/NodeRuntime.java"
-          cp "$PATCHDIR/SynthiaRuntimeService.java" "$app/src/main/java/world/synthia/r2116/SynthiaRuntimeService.java"
-          sed -i "s/@@PAYLOAD_SHA256@@/$PAYLOAD_SHA/g" "$app/src/main/java/world/synthia/r2116/SynthiaRuntimeService.java"
-          cp "$PATCHDIR/native-lib.cpp" "$app/src/main/cpp/native-lib.cpp"
-          cp "$PATCHDIR/AndroidManifest.xml" "$app/src/main/AndroidManifest.xml"
-          cp "$PATCHDIR/build.gradle" "$app/build.gradle"
-          cp "$PATCHDIR/wrapper-launcher.cjs" "$app/src/main/assets/wrapper-launcher.cjs"
-          cp "$RUNNER_TEMP/synthia-v045.zip" "$app/src/main/assets/synthia-v045.zip"
-          rm -f "$app/src/main/assets/synthia-r21.16.zip"
-          if test -f "$RUNNER_TEMP/residence/pure-synthia/extension/icon-512.png"; then
-            cp "$RUNNER_TEMP/residence/pure-synthia/extension/icon-512.png" "$app/src/main/res/drawable/synthia_icon.png"
-          else
-            cp "$RUNNER_TEMP/residence/apps/synthia-sovereign-studio/dist/public/icons/icon-512.png" "$app/src/main/res/drawable/synthia_icon.png"
-          fi
-
-      - name: Compile release APK
-        shell: bash
-        working-directory: android-r2116-wrapper
-        env:
-          SYNTHIA_APPLICATION_ID: ${{ env.SYNTHIA_APPLICATION_ID }}
-          SYNTHIA_VERSION_CODE: ${{ env.SYNTHIA_VERSION_CODE }}
-          SYNTHIA_VERSION_NAME: ${{ env.SYNTHIA_VERSION_NAME }}
-        run: |
-          set -euo pipefail
-          chmod +x gradlew
-          ./gradlew :app:assembleRelease --no-daemon --stacktrace
-          test -f app/build/outputs/apk/release/app-release-unsigned.apk
-
-      - name: Parse private signing kit without exposing credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf "$RUNNER_TEMP/signing" && mkdir -p "$RUNNER_TEMP/signing"
-          unzip -q "$RUNNER_TEMP/synthia-inputs/signing.zip" -d "$RUNNER_TEMP/signing"
-          test -f "$RUNNER_TEMP/signing/synthia-local-sync.jks"
-          test -f "$RUNNER_TEMP/signing/SIGNING-KEY-README.txt"
-          node <<'NODE' > "$RUNNER_TEMP/signing/parsed.json"
-          const fs = require('fs');
-          const text = fs.readFileSync(process.env.RUNNER_TEMP + '/signing/SIGNING-KEY-README.txt','utf8');
-          const first = patterns => { for (const p of patterns) { const m=text.match(p); if(m) return m[1].trim().replace(/^['\"]|['\"]$/g,''); } return ''; };
-          let alias = first([/--ks-key-alias\s+([^\s]+)/i,/\balias\s*[:=]\s*([^\s]+)/i]) || 'synthia';
-          let store = first([/--ks-pass\s+pass:([^\s]+)/i,/(?:keystore|store)\s*password\s*[:=]\s*([^\s]+)/i,/\bstorepass\s*[:=]?\s*([^\s]+)/i]);
-          let key = first([/--key-pass\s+pass:([^\s]+)/i,/\bkey\s*password\s*[:=]\s*([^\s]+)/i,/\bkeypass\s*[:=]?\s*([^\s]+)/i]);
-          if (!store) store = first([/\bpassword\s*[:=]\s*([^\s]+)/i]);
-          if (!key) key = store;
-          if (!store) process.exit(2);
-          fs.writeFileSync(process.env.RUNNER_TEMP + '/signing/parsed.json', JSON.stringify({alias,store,key}));
-          NODE
-          SIGN_ALIAS="$(jq -r .alias "$RUNNER_TEMP/signing/parsed.json")"
-          STORE_PASS="$(jq -r .store "$RUNNER_TEMP/signing/parsed.json")"
-          KEY_PASS="$(jq -r .key "$RUNNER_TEMP/signing/parsed.json")"
-          test -n "$SIGN_ALIAS" && test -n "$STORE_PASS" && test -n "$KEY_PASS"
-          echo "SIGN_ALIAS=$SIGN_ALIAS" >> "$GITHUB_ENV"
-          echo "STORE_PASS=$STORE_PASS" >> "$GITHUB_ENV"
-          echo "KEY_PASS=$KEY_PASS" >> "$GITHUB_ENV"
-          rm -f "$RUNNER_TEMP/signing/parsed.json"
-
-      - name: Align, sign, and verify same Synthia identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          unsigned="$WRAPPER/app/build/outputs/apk/release/app-release-unsigned.apk"
-          aligned="$RUNNER_TEMP/aligned.apk"
-          final="$RUNNER_TEMP/$OUTBASE"
-          "$ZIPALIGN" -f -p 4 "$unsigned" "$aligned"
-          "$APKSIGNER" sign \
-            --ks "$RUNNER_TEMP/signing/synthia-local-sync.jks" \
-            --ks-key-alias "$SIGN_ALIAS" \
-            --ks-pass env:STORE_PASS \
-            --key-pass env:KEY_PASS \
-            --out "$final" "$aligned"
-          "$APKSIGNER" verify --verbose --print-certs "$final" >/dev/null
-          new_cert="$($APKSIGNER verify --print-certs "$final" 2>/dev/null | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
-          test "$new_cert" = "$ORIGINAL_CERT"
-          final_badging="$($AAPT dump badging "$final")"
-          final_id="$(printf '%s\n' "$final_badging" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
-          final_code="$(printf '%s\n' "$final_badging" | sed -n "s/^package:.*versionCode='\([^']*\)'.*/\1/p" | head -1)"
-          test "$final_id" = "$SYNTHIA_APPLICATION_ID"
-          test "$final_code" = "$SYNTHIA_VERSION_CODE"
-          sha256sum "$final" > "$RUNNER_TEMP/$OUTBASE.sha256"
-          jq -n \
-            --arg artifact "$OUTBASE" \
-            --arg application_id "$final_id" \
-            --arg old_version_code "$SYNTHIA_OLD_VERSION_CODE" \
-            --arg version_code "$final_code" \
-            --arg version_name "$SYNTHIA_VERSION_NAME" \
-            --arg payload_sha256 "$PAYLOAD_SHA" \
-            --arg apk_sha256 "$(sha256sum "$final" | awk '{print $1}')" \
-            --arg signer_sha256 "$new_cert" \
-            '{ok:true,artifact:$artifact,application_id:$application_id,old_version_code:$old_version_code,version_code:$version_code,version_name:$version_name,payload_sha256:$payload_sha256,apk_sha256:$apk_sha256,signer_sha256:$signer_sha256,checks:["server syntax","Pure Synthia full wiring","durable restart","current swarm","same package id","same signing certificate"]}' \
-            > "$RUNNER_TEMP/$OUTBASE.json"
-
-      - name: Upload private birth candidate to Synthia release storage
-        shell: bash
-        run: |
-          set -euo pipefail
-          auth="Authorization: Bearer $(cat "$RUNNER_TEMP/synthia-oidc-token")"
-          mkdir -p "$RUNNER_TEMP/chunks"
-          split -b 10m -d -a 2 "$RUNNER_TEMP/$OUTBASE" "$RUNNER_TEMP/chunks/$OUTBASE.part-"
-          for part in "$RUNNER_TEMP/chunks/$OUTBASE.part-"*; do
-            name="$(basename "$part")"
-            curl -fsS -X POST -H "$auth" --data-binary @"$part" "$BRIDGE?name=$name" >/dev/null
-          done
-          curl -fsS -X POST -H "$auth" --data-binary @"$RUNNER_TEMP/$OUTBASE.sha256" "$BRIDGE?name=$OUTBASE.sha256" >/dev/null
-          curl -fsS -X POST -H "$auth" -H 'Content-Type: application/json' --data-binary @"$RUNNER_TEMP/$OUTBASE.json" "$BRIDGE?name=$OUTBASE.json" >/dev/null
-
-      - name: Upload workflow artifact
+      - name: Upload verified APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Synthia-v0.4.5-BIRTH-CANDIDATE
+          name: Synthia-v0.4.6-BIRTH-CANDIDATE
           path: |
-            ${{ runner.temp }}/Synthia-Phone-Selfhosted-v0.4.5-BIRTH-CANDIDATE.apk
-            ${{ runner.temp }}/Synthia-Phone-Selfhosted-v0.4.5-BIRTH-CANDIDATE.apk.sha256
-            ${{ runner.temp }}/Synthia-Phone-Selfhosted-v0.4.5-BIRTH-CANDIDATE.apk.json
+            out/Synthia-Phone-Selfhosted-v0.4.6-BIRTH-CANDIDATE.apk
+            out/Synthia-Phone-Selfhosted-v0.4.6-BIRTH-CANDIDATE.apk.sha256
+            out/Synthia-Phone-Selfhosted-v0.4.6-BIRTH-CANDIDATE.apk.json
           retention-days: 7
