@@ -1,0 +1,39 @@
+name: Build Synthia v0.4.8 Backend Connected
+on:
+  push:
+    branches:
+      - build/v045-birth-candidate
+    paths:
+      - '.github/backend-hook-v048/**'
+      - '.github/workflows/build-v048-backend-connected.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Build signed backend-connected APK
+        shell: bash
+        run: |
+          node .github/artifact-foundry-v047/prepare-build.mjs
+          node .github/backend-hook-v048/prepare-build-v048.mjs
+          chmod +x .github/artifact-foundry-v047/build.sh
+          .github/artifact-foundry-v047/build.sh
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-v0.4.8-BACKEND-CONNECTED
+          path: |
+            out/Synthia-Phone-Selfhosted-v0.4.8-BACKEND-CONNECTED.apk
+            out/Synthia-Phone-Selfhosted-v0.4.8-BACKEND-CONNECTED.apk.sha256
+            out/VERIFICATION.json
+          retention-days: 1
