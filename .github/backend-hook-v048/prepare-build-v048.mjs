@@ -92,4 +92,6 @@ const newMeta = `jq -n --arg release "Synthia Phone Selfhosted v0.4.8 — Backen
 s = s.slice(0, metaIndex) + newMeta + s.slice(metaEnd);
 
 fs.writeFileSync(path, s);
+const generated = s.split('\n');
+for (let n = 106; n <= 114; n++) console.log(`v048 generated line ${n}: ${generated[n - 1] ?? ''}`);
 console.log('prepared v0.4.8 backend-connected build on top of proven v0.4.7 signer');
