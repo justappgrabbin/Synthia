@@ -24,6 +24,7 @@ jobs:
       - name: Build signed Synthia backend + update spine APK
         shell: bash
         run: |
+          node .github/backend-update-v0471/prepare-refresh.mjs
           chmod +x .github/backend-update-v0471/build.sh
           .github/backend-update-v0471/build.sh
       - name: Upload APK
