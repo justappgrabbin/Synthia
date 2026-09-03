@@ -3,6 +3,9 @@ import fs from 'node:fs';
 const path = '.github/backend-update-v0471/build.sh';
 let s = fs.readFileSync(path, 'utf8');
 
+// The private phone sync config's credential field is `token`.
+s = s.replaceAll('.workspace_token', '.token');
+
 const vars = 'PHONECFG="$RES/config/phone-sync.json"';
 if (!s.includes(vars)) throw new Error('phone config variable anchor missing');
 s = s.replace(vars, `${vars}\nDEX="classes2.dex"\nMARKER="$RES/v048-refresh"`);
@@ -19,9 +22,7 @@ const zipAdd = '(cd "$TMP/final" && zip -q "$TMP/patched-unsigned.apk" "$INDEX" 
 if (!s.includes(zipAdd)) throw new Error('zip add anchor missing');
 s = s.replace(zipAdd, '(cd "$TMP/final" && zip -q "$TMP/patched-unsigned.apk" "$INDEX" "$SYNC" "$FOUNDRY" "$SERVER" "$PHONECFG" "$DEX" "$MARKER")');
 
-const configVerify = 'unzip -p "$OUT/$APK_NAME" "$PHONECFG" | jq -e \' .workspace_id and .workspace_token\' >/dev/null';
-// Match without depending on shell-quote formatting in the source.
-const actualConfigVerify = 'unzip -p "$OUT/$APK_NAME" "$PHONECFG" | jq -e \'.workspace_id and .workspace_token\' >/dev/null';
+const actualConfigVerify = 'unzip -p "$OUT/$APK_NAME" "$PHONECFG" | jq -e \'.workspace_id and .token\' >/dev/null';
 if (!s.includes(actualConfigVerify)) throw new Error('config verification anchor missing');
 s = s.replace(actualConfigVerify, `${actualConfigVerify}\nunzip -p "$OUT/$APK_NAME" "$DEX" > "$TMP/final-classes2.dex"\nstrings "$TMP/final-classes2.dex" | grep -q '^v048-refresh$'\nunzip -p "$OUT/$APK_NAME" "$MARKER" | grep -q 'backend payload refresh marker'`);
 
