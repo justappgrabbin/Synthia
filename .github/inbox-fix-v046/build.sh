@@ -55,6 +55,14 @@ test -x "$APKSIGNER" && test -x "$ZIPALIGN"
 say "Verify ancestor package and certificate"
 base_cert="$($APKSIGNER verify --print-certs "$TMP/base.apk" 2>&1 | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1 | tr 'A-F' 'a-f')"
 test -n "$base_cert"
+jks_cert="$(keytool -list -v -keystore "$TMP/signing/synthia-local-sync.jks" -alias "$SIGN_ALIAS" -storepass "$STORE_PASS" 2>/dev/null | sed -n 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')"
+test -n "$jks_cert"
+echo "ancestor cert: $base_cert"
+echo "signing-kit cert: $jks_cert"
+if [ "$base_cert" != "$jks_cert" ]; then
+  echo "Signing kit certificate does not match the installed-lineage ancestor APK." >&2
+  exit 1
+fi
 unzip -p "$TMP/base.apk" AndroidManifest.xml | sha256sum | awk '{print $1}' > "$TMP/base-manifest.sha256"
 unzip -p "$TMP/base.apk" "$TARGET" > "$TMP/original-connector.js"
 test -s "$TMP/original-connector.js"
@@ -78,9 +86,17 @@ say "Align and sign with the installed Synthia key"
   --key-pass "pass:$KEY_PASS" \
   --out "$OUT/$APK_NAME" \
   "$TMP/aligned.apk"
-"$APKSIGNER" verify --verbose --print-certs "$OUT/$APK_NAME" > "$TMP/verify.txt" 2>&1
+if ! "$APKSIGNER" verify --verbose --print-certs "$OUT/$APK_NAME" > "$TMP/verify.txt" 2>&1; then
+  cat "$TMP/verify.txt" >&2
+  exit 1
+fi
 new_cert="$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$TMP/verify.txt" | head -1 | tr 'A-F' 'a-f')"
-test "$new_cert" = "$base_cert"
+test -n "$new_cert"
+echo "new APK cert: $new_cert"
+if [ "$new_cert" != "$base_cert" ]; then
+  echo "Signed APK certificate does not match the installed-lineage ancestor APK." >&2
+  exit 1
+fi
 
 say "Prove only the intended payload entry changed"
 unzip -p "$OUT/$APK_NAME" AndroidManifest.xml | sha256sum | awk '{print $1}' > "$TMP/new-manifest.sha256"
