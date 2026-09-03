@@ -5,12 +5,12 @@ let s = fs.readFileSync(path, 'utf8');
 
 const afterInbox = 'INBOXDIR="$ROOT/.github/inbox-fix-v046"';
 if (!s.includes(afterInbox)) throw new Error('INBOXDIR anchor missing');
-s = s.replace(afterInbox, `${afterInbox}\nBACKENDDIR="$ROOT/.github/backend-hook-v048"`);
+s = s.replace(afterInbox, () => `${afterInbox}\nBACKENDDIR="$ROOT/.github/backend-hook-v048"`);
 
 const oldName = 'APK_NAME="Synthia-Phone-Selfhosted-v0.4.7-ARTIFACT-FOUNDRY.apk"';
 const newName = 'APK_NAME="Synthia-Phone-Selfhosted-v0.4.8-BACKEND-CONNECTED.apk"';
 if (!s.includes(oldName)) throw new Error('APK name anchor missing');
-s = s.replace(oldName, newName);
+s = s.replace(oldName, () => newName);
 
 const prepAnchor = 'node --check "$TMP/patch/$FOUNDRY"';
 if (!s.includes(prepAnchor)) throw new Error('Foundry check anchor missing');
@@ -52,17 +52,17 @@ say "Force one-time installed backend refresh"
 node "$BACKENDDIR/patch-dex.mjs" "$TMP/patch/$DEX"
 strings "$TMP/patch/$DEX" | grep -q '^v048-refresh$'
 if strings "$TMP/patch/$DEX" | grep -q '^package.json$'; then echo "Native refresh check still points at package.json" >&2; exit 1; fi`;
-s = s.replace(prepAnchor, `${prepAnchor}\n${backendPrep}`);
+s = s.replace(prepAnchor, () => `${prepAnchor}\n${backendPrep}`);
 
 const oldPatch = `cp "$TMP/base.apk" "$TMP/patched-unsigned.apk"\nzip -q -d "$TMP/patched-unsigned.apk" "$INDEX" "$SYNC" "$FOUNDRY" || true\nzip -q -d "$TMP/patched-unsigned.apk" 'META-INF/*' || true\n(cd "$TMP/patch" && zip -q "$TMP/patched-unsigned.apk" "$INDEX" "$SYNC" "$FOUNDRY")`;
 const newPatch = `cp "$TMP/base.apk" "$TMP/patched-unsigned.apk"\nfor entry in "$START" "$SERVER" "$PHONE_CONFIG" "$MARKER" "$INDEX" "$SYNC" "$BRIDGE_JS" "$FOUNDRY" "$DEX"; do zip -q -d "$TMP/patched-unsigned.apk" "$entry" || true; done\nzip -q -d "$TMP/patched-unsigned.apk" 'META-INF/*' || true\n(cd "$TMP/patch" && zip -q "$TMP/patched-unsigned.apk" "$START" "$SERVER" "$PHONE_CONFIG" "$MARKER" "$INDEX" "$SYNC" "$BRIDGE_JS" "$FOUNDRY" "$DEX")`;
 if (!s.includes(oldPatch)) throw new Error('APK patch block missing');
-s = s.replace(oldPatch, newPatch);
+s = s.replace(oldPatch, () => newPatch);
 
 const oldSyncCheck = 'unzip -p "$OUT/$APK_NAME" "$SYNC" | cmp - "$INBOXDIR/synthia-sync-connector.js"';
 const newSyncCheck = 'unzip -p "$OUT/$APK_NAME" "$SYNC" | cmp - "$TMP/patch/$SYNC"';
 if (!s.includes(oldSyncCheck)) throw new Error('sync verification anchor missing');
-s = s.replace(oldSyncCheck, newSyncCheck);
+s = s.replace(oldSyncCheck, () => newSyncCheck);
 
 const indexCheck = `unzip -p "$OUT/$APK_NAME" "$INDEX" | grep -q 'synthia-artifact-foundry.js'`;
 if (!s.includes(indexCheck)) throw new Error('index verification anchor missing');
@@ -76,12 +76,12 @@ unzip -p "$OUT/$APK_NAME" "$MARKER" | grep -q 'v0.4.8'
 unzip -p "$OUT/$APK_NAME" "$PHONE_CONFIG" | jq -e --arg workspace "$EXPECTED_WORKSPACE" --arg participant "$EXPECTED_PARTICIPANT" '.token and .workspace_id == $workspace and .participant_ref == $participant' >/dev/null
 unzip -p "$OUT/$APK_NAME" "$DEX" > "$TMP/final-classes2.dex"
 strings "$TMP/final-classes2.dex" | grep -q '^v048-refresh$'`;
-s = s.replace(indexCheck, `${indexCheck}\n${extraChecks}`);
+s = s.replace(indexCheck, () => `${indexCheck}\n${extraChecks}`);
 
 const oldDiff = `rm -rf "$TMP/before/META-INF" "$TMP/after/META-INF"; rm -f "$TMP/before/$INDEX" "$TMP/after/$INDEX" "$TMP/before/$SYNC" "$TMP/after/$SYNC" "$TMP/before/$FOUNDRY" "$TMP/after/$FOUNDRY"`;
 const newDiff = `rm -rf "$TMP/before/META-INF" "$TMP/after/META-INF"\nfor entry in "$START" "$SERVER" "$PHONE_CONFIG" "$MARKER" "$INDEX" "$SYNC" "$BRIDGE_JS" "$FOUNDRY" "$DEX"; do rm -f "$TMP/before/$entry" "$TMP/after/$entry"; done`;
 if (!s.includes(oldDiff)) throw new Error('diff exclusion anchor missing');
-s = s.replace(oldDiff, newDiff);
+s = s.replace(oldDiff, () => newDiff);
 
 const oldMetaStart = `jq -n --arg release "Synthia Phone Selfhosted v0.4.7 — Artifact Foundry"`;
 const metaIndex = s.indexOf(oldMetaStart);
@@ -92,6 +92,4 @@ const newMeta = `jq -n --arg release "Synthia Phone Selfhosted v0.4.8 — Backen
 s = s.slice(0, metaIndex) + newMeta + s.slice(metaEnd);
 
 fs.writeFileSync(path, s);
-const generated = s.split('\n');
-for (let n = 106; n <= 114; n++) console.log(`v048 generated line ${n}: ${generated[n - 1] ?? ''}`);
 console.log('prepared v0.4.8 backend-connected build on top of proven v0.4.7 signer');
