@@ -1,0 +1,32 @@
+// ── /sync ───────────────────────────────────────────────────────
+app.get('/sync/status', (req, res) => res.json({ ok: true, configured: !!loadPhoneSyncConfig(), busy: phoneSyncBusy, ...PHONE_SYNC }));
+app.post('/sync/poll', async (req, res) => {
+  const result = await pollPhoneSync();
+  res.status(result.ok ? 200 : 502).json(result);
+});
+app.get('/sync/notifications', async (req, res) => {
+  try { res.json({ ok: true, notifications: await phoneNotifications() }); }
+  catch (err) { res.status(502).json({ ok: false, error: err.message }); }
+});
+app.post('/sync/mark-read', async (req, res) => {
+  try {
+    const id = Number(req.body?.notification_id);
+    if (!Number.isInteger(id)) return res.status(400).json({ ok:false, error:'notification_id required' });
+    await phoneSyncRpc('synthia_mark_notification_read', { notification_id: id });
+    res.json({ ok: true, notification_id: id });
+  } catch (err) { res.status(502).json({ ok:false, error:err.message }); }
+});
+app.post('/sync/decision', async (req, res) => {
+  try {
+    const notice = req.body?.notification || {};
+    const decision = req.body?.decision;
+    if (!['approved','rejected'].includes(decision)) return res.status(400).json({ ok:false,error:'invalid decision' });
+    if (notice.notification_type === 'connection.requested' && notice.payload?.request_id) {
+      await phoneSyncRpc('synthia_respond_connection', { request_id: notice.payload.request_id, decision });
+    } else if (notice.notification_type === 'change.approval_requested' && notice.payload?.proposal_id) {
+      await phoneSyncRpc('synthia_respond_change', { proposal_id: notice.payload.proposal_id, decision });
+    } else return res.status(400).json({ ok:false,error:'notification is not actionable' });
+    await markDecisionNotificationsRead(notice);
+    res.json({ ok: true, decision });
+  } catch (err) { res.status(502).json({ ok:false,error:err.message }); }
+});
