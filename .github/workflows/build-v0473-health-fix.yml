@@ -1,0 +1,85 @@
+name: Build Synthia v0.4.7.3 Health Fix
+on:
+  push:
+    branches:
+      - build/v045-birth-candidate
+    paths:
+      - '.github/workflows/build-v0473-health-fix.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Prepare surgical Supabase health patch
+        shell: bash
+        run: |
+          cat > /tmp/patch-health.mjs <<'NODE'
+          import fs from 'node:fs';
+          const p=process.argv[2];
+          if(!p) throw new Error('usage: patch-health.mjs <main-ui-bundle>');
+          let s=fs.readFileSync(p,'utf8');
+          const anchor='health:()=>request("/health")';
+          const count=s.split(anchor).length-1;
+          if(count!==1) throw new Error(`expected exactly one boot health anchor, found ${count}`);
+          const fixed='health:()=>{if(typeof location!=="undefined"&&location.hostname==="leisphnjslcuepflefri.supabase.co"){return fetch("https://leisphnjslcuepflefri.supabase.co/functions/v1/synthia-prototype/health",{cache:"no-store",headers:{apikey:"sb_publishable_r875ycY951IHyew2SwXEmg_qMOgv9AW"}}).then(async r=>{const t=await r.text();if(!r.ok)throw new Error(r.status+" "+r.statusText+": "+t);return t?JSON.parse(t):{}})}return request("/health")}';
+          s=s.replace(anchor,fixed);
+          if(s.includes(anchor)) throw new Error('bare boot health call survived patch');
+          if(!s.includes('/functions/v1/synthia-prototype/health')) throw new Error('correct health route missing after patch');
+          if(!s.includes('headers:{apikey:"sb_publishable_')) throw new Error('publishable apikey header missing after patch');
+          fs.writeFileSync(p,s);
+          NODE
+
+          node <<'NODE'
+          import fs from 'node:fs';
+          const p='.github/front-wiring-v0473-safe/build.sh';
+          let s=fs.readFileSync(p,'utf8');
+          function once(anchor,replacement,label){
+            const count=s.split(anchor).length-1;
+            if(count!==1) throw new Error(`${label}: expected one anchor, found ${count}`);
+            s=s.replace(anchor,replacement);
+          }
+          once('FOUNDRY="$BASE/assets/synthia-artifact-foundry.js"\n','FOUNDRY="$BASE/assets/synthia-artifact-foundry.js"\nMAIN="$RES/apps/synthia-sovereign-studio/dist/public/assets/index-BhnFllts.js"\n','main bundle variable');
+          once('mkdir -p "$TMP/patch/$BASE/assets" "$TMP/signing" "$OUT"','mkdir -p "$TMP/patch/$BASE/assets" "$(dirname "$TMP/patch/$MAIN")" "$TMP/signing" "$OUT"','main bundle patch directory');
+          once('unzip -p "$TMP/base-v0471.apk" "$FOUNDRY" > "$TMP/patch/$FOUNDRY"\n','unzip -p "$TMP/base-v0471.apk" "$FOUNDRY" > "$TMP/patch/$FOUNDRY"\nunzip -p "$TMP/base-v0471.apk" "$MAIN" > "$TMP/patch/$MAIN"\n','extract main bundle');
+          once('node "$PATCHDIR/patch-foundry.mjs" "$TMP/patch/$FOUNDRY"\n','node "$PATCHDIR/patch-foundry.mjs" "$TMP/patch/$FOUNDRY"\nnode /tmp/patch-health.mjs "$TMP/patch/$MAIN"\n','run health patch');
+          once('node --check "$TMP/patch/$FOUNDRY"\n','node --check "$TMP/patch/$FOUNDRY"\nnode --check "$TMP/patch/$MAIN"\ngrep -q \'/functions/v1/synthia-prototype/health\' "$TMP/patch/$MAIN"\n! grep -q \'health:()=>request("/health")\' "$TMP/patch/$MAIN"\n','verify health patch');
+          once('zip -q -d "$TMP/patched-unsigned.apk" "$SHELL" "$SYNC" "$FOUNDRY" || true','zip -q -d "$TMP/patched-unsigned.apk" "$SHELL" "$SYNC" "$FOUNDRY" "$MAIN" || true','remove patched entries');
+          once('(cd "$TMP/patch" && zip -q "$TMP/patched-unsigned.apk" "$SHELL" "$SYNC" "$FOUNDRY")','(cd "$TMP/patch" && zip -q "$TMP/patched-unsigned.apk" "$SHELL" "$SYNC" "$FOUNDRY" "$MAIN")','add patched entries');
+          once('say "Verify only three frontend payload entries changed"','say "Verify only four frontend payload entries changed"','verification title');
+          once('for allowed in "$SHELL" "$SYNC" "$FOUNDRY"; do','for allowed in "$SHELL" "$SYNC" "$FOUNDRY" "$MAIN"; do','allowed changed files');
+          once('"wire Pure Synthia status to existing /mcp/synthia/status route"],changed_entries:["mobile-linux/assets/synthia-local.js","mobile-linux/assets/synthia-sync-connector.js","mobile-linux/assets/synthia-artifact-foundry.js"]','"wire Pure Synthia status to existing /mcp/synthia/status route","route Supabase-hosted boot health to synthia-prototype with apikey"],changed_entries:["mobile-linux/assets/synthia-local.js","mobile-linux/assets/synthia-sync-connector.js","mobile-linux/assets/synthia-artifact-foundry.js","synthia-sovereign-studio/dist/public/assets/index-BhnFllts.js"]','verification manifest');
+          fs.writeFileSync(p,s);
+          NODE
+      - name: Build signed health-fixed APK
+        shell: bash
+        run: |
+          chmod +x .github/front-wiring-v0473-safe/build.sh
+          .github/front-wiring-v0473-safe/build.sh
+      - name: Prove packaged health route
+        shell: bash
+        run: |
+          MAIN='assets/synthia-server/apps/synthia-sovereign-studio/dist/public/assets/index-BhnFllts.js'
+          unzip -p out/Synthia-Phone-Selfhosted-v0.4.7.3-SAFE-FRONTEND.apk "$MAIN" > /tmp/main-ui.js
+          grep -q '/functions/v1/synthia-prototype/health' /tmp/main-ui.js
+          grep -q 'headers:{apikey:"sb_publishable_' /tmp/main-ui.js
+          ! grep -q 'health:()=>request("/health")' /tmp/main-ui.js
+          node --check /tmp/main-ui.js
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Synthia-v0.4.7.3-HEALTH-FIX
+          path: |
+            out/Synthia-Phone-Selfhosted-v0.4.7.3-SAFE-FRONTEND.apk
+            out/Synthia-Phone-Selfhosted-v0.4.7.3-SAFE-FRONTEND.apk.sha256
+            out/VERIFICATION.json
+          retention-days: 7
