@@ -1,0 +1,11 @@
+{
+  "name": "Synthia",
+  "short_name": "Synthia",
+  "description": "Adaptive state-space intelligence environment.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0014",
+  "theme_color": "#0a0014",
+  "orientation": "any"
+}
