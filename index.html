@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0014" />
+  <meta name="description" content="Synthia — adaptive state-space intelligence environment." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <title>Synthia</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#0a0014;color:#f0e8ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    #app{position:fixed;inset:0;width:100%;height:100%;border:0;background:#0a0014}
+    #upgrade{position:fixed;right:14px;bottom:14px;z-index:99999;border:1px solid rgba(224,170,255,.45);border-radius:999px;padding:11px 16px;background:linear-gradient(135deg,#7c3aed,#b829f7);color:#fff;font-weight:800;font-size:13px;box-shadow:0 10px 30px rgba(184,41,247,.35);cursor:pointer}
+    #upgrade[hidden]{display:none}
+    #status{position:fixed;left:12px;bottom:12px;z-index:99998;padding:6px 9px;border:1px solid rgba(224,170,255,.18);border-radius:9px;background:rgba(10,0,20,.78);backdrop-filter:blur(12px);font-size:10px;color:#9a80b8;pointer-events:none}
+    @media(max-width:640px){#upgrade{right:10px;bottom:10px;padding:10px 14px}#status{display:none}}
+  </style>
+</head>
+<body>
+  <iframe id="app" title="Synthia" src="./SYNTH_OS_touch_top_buttons_fixed%20(1).html" allow="clipboard-read; clipboard-write; microphone; camera; fullscreen" referrerpolicy="same-origin"></iframe>
+  <button id="upgrade" type="button">Unlock Synthia+</button>
+  <div id="status">Synthia runtime · launch shell active</div>
+  <script src="/payment.js"></script>
+  <script>
+    (()=>{
+      const KEY='synthia.launch.events.v1';
+      const record=(type,data={})=>{
+        try{
+          const events=JSON.parse(localStorage.getItem(KEY)||'[]');
+          events.push({type,at:new Date().toISOString(),...data});
+          localStorage.setItem(KEY,JSON.stringify(events.slice(-250)));
+        }catch(_){}
+      };
+      window.SynthiaLaunch={record,getEvents:()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(_){return[]}}};
+      record('launch');
+      const button=document.getElementById('upgrade');
+      button.addEventListener('click',async()=>{
+        record('upgrade_clicked');
+        try{
+          if(!window.SynthiaPayment||typeof window.SynthiaPayment.checkout!=='function') throw new Error('Payment adapter unavailable');
+          await window.SynthiaPayment.checkout({plan:'synthia-plus',source:'launch-shell'});
+        }catch(err){
+          record('checkout_error',{message:String(err&&err.message||err)});
+          alert('Checkout is not connected yet. The app itself is ready; connect the payment adapter in payment.js.');
+        }
+      });
+      window.addEventListener('message',event=>{
+        if(event.origin!==location.origin)return;
+        if(!event.data||event.data.source!=='synthia-runtime')return;
+        record('runtime_event',{event:event.data.event||'unknown'});
+      });
+    })();
+  </script>
+</body>
+</html>
