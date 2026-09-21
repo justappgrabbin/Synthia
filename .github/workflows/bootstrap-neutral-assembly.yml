@@ -1,0 +1,31 @@
+name: Bootstrap neutral assembly
+on:
+  push:
+    branches: [build/resonance-neutral-assembly-v1]
+    paths: ['.bootstrap/part-05.b64']
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/resonance-neutral-assembly-v1
+      - name: Reconstruct tested source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .bootstrap/part-*.b64 > /tmp/neutral.b64
+          base64 -d /tmp/neutral.b64 > /tmp/neutral.zip
+          rm -rf /tmp/neutral-src neutral-assembly
+          mkdir -p /tmp/neutral-src
+          unzip -q /tmp/neutral.zip -d /tmp/neutral-src
+          cp -a /tmp/neutral-src/neutral-assembly ./neutral-assembly
+          rm -rf .bootstrap
+          rm -f .github/workflows/bootstrap-neutral-assembly.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Assemble tested neutral runtime source"
+          git push origin HEAD:build/resonance-neutral-assembly-v1
