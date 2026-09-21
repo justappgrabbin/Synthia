@@ -1,0 +1,20 @@
+name: Neutral assembly CI
+on:
+  push:
+    branches: [build/resonance-neutral-assembly-v1]
+    paths: ['neutral-assembly/**', '.github/workflows/neutral-assembly-ci.yml']
+  pull_request:
+    paths: ['neutral-assembly/**']
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: neutral-assembly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - run: npm run compliance
