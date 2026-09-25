@@ -1,0 +1,25 @@
+{
+  "id": "synthia.research-report",
+  "name": "ResearchReportAutomaton",
+  "version": "0.1.0",
+  "kind": "bounded-automata-set",
+  "protectedBaselineImpact": "additive-only",
+  "automata": [
+    "ResearchScout",
+    "EvidenceMiner",
+    "ScientistLoop",
+    "ReportPlanner",
+    "ReportWriter",
+    "ReportVerifier",
+    "Publisher"
+  ],
+  "bridge": "window.SynthiaResearchBridge",
+  "outputs": [
+    "report.md",
+    "report.html",
+    "claims.json",
+    "sources.json",
+    "provenance.json",
+    "verification.json"
+  ]
+}
