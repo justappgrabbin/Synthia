@@ -108,7 +108,7 @@ export class NeutralAssembly {
     await this.put('manifests', manifestId, manifestBytes);
     return { manifestId, manifest };
   }
-  importZip(name, archive) {
+  async importZip(name, archive) {
     const data = bytes(archive);
     return this.importFiles(name, unpackZip(data, this), data);
   }
