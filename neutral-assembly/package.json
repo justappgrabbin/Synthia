@@ -1,0 +1,13 @@
+{
+  "name": "synthia-neutral-assembly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/runtime.test.mjs",
+    "compliance": "node --test test/compliance.test.mjs"
+  }
+}
