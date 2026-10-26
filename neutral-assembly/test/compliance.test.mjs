@@ -20,7 +20,7 @@ test('compliance: original bytes survive authorized overlay assembly, with indep
       vault.assemble({ manifestId: first.manifestId, proposalIds: [p.proposalId], actor: 'builder' }),
       /owner approval/
     );
-    assert.equal((await readdir(join(root, 'assemblies'))).length, 0);
+    await assert.rejects(readdir(join(root, 'assemblies')), { code: 'ENOENT' });
     const approved = await vault.assemble({
       manifestId: first.manifestId, proposalIds: [p.proposalId], actor: 'verified-owner'
     });
